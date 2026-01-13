@@ -162,18 +162,41 @@ export function RoomPage() {
             reconnectAttemptRef.current = 0
             
             // Send SYNC_REQUEST after WELCOME
+            // Use roomIdToConnect to ensure we have the correct roomId from the function parameter
             setTimeout(() => {
-              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && roomId) {
+              const currentRoomId = roomIdToConnect || roomId
+              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && currentRoomId) {
                 try {
-                  const syncMessage = {
-                    type: 'SYNC_REQUEST',
-                    roomId,
+                  // Validate roomId before sending
+                  if (!currentRoomId || typeof currentRoomId !== 'string' || currentRoomId.trim() === '') {
+                    logError('[WS] Cannot send SYNC_REQUEST: Invalid roomId', { 
+                      roomId: currentRoomId, 
+                      type: typeof currentRoomId,
+                      fromParams: roomId,
+                      fromConnect: roomIdToConnect
+                    })
+                    return
                   }
-                  wsRef.current.send(JSON.stringify(syncMessage))
+                  
+                  const syncMessage = {
+                    type: 'SYNC_REQUEST' as const,
+                    roomId: currentRoomId.trim(),
+                  }
+                  log('[WS] Sending SYNC_REQUEST:', syncMessage)
+                  const messageString = JSON.stringify(syncMessage)
+                  log('[WS] SYNC_REQUEST JSON:', messageString)
+                  wsRef.current.send(messageString)
                   log('[WS] SYNC_REQUEST sent')
                 } catch (err) {
                   logError('[WS] Failed to send SYNC_REQUEST:', err)
                 }
+              } else {
+                logError('[WS] Cannot send SYNC_REQUEST:', {
+                  wsReady: wsRef.current?.readyState === WebSocket.OPEN,
+                  roomId: currentRoomId,
+                  roomIdFromParams: roomId,
+                  roomIdFromConnect: roomIdToConnect,
+                })
               }
             }, 100) // Small delay to ensure connection is stable
           } else if (message.type === 'STATE') {
@@ -185,18 +208,41 @@ export function RoomPage() {
             reconnectAttemptRef.current = 0
             
             // Also send SYNC_REQUEST after STATE (in case WELCOME was missed)
+            // Use roomIdToConnect to ensure we have the correct roomId from the function parameter
             setTimeout(() => {
-              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && roomId) {
+              const currentRoomId = roomIdToConnect || roomId
+              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && currentRoomId) {
                 try {
-                  const syncMessage = {
-                    type: 'SYNC_REQUEST',
-                    roomId,
+                  // Validate roomId before sending
+                  if (!currentRoomId || typeof currentRoomId !== 'string' || currentRoomId.trim() === '') {
+                    logError('[WS] Cannot send SYNC_REQUEST (after STATE): Invalid roomId', { 
+                      roomId: currentRoomId, 
+                      type: typeof currentRoomId,
+                      fromParams: roomId,
+                      fromConnect: roomIdToConnect
+                    })
+                    return
                   }
-                  wsRef.current.send(JSON.stringify(syncMessage))
+                  
+                  const syncMessage = {
+                    type: 'SYNC_REQUEST' as const,
+                    roomId: currentRoomId.trim(),
+                  }
+                  log('[WS] Sending SYNC_REQUEST (after STATE):', syncMessage)
+                  const messageString = JSON.stringify(syncMessage)
+                  log('[WS] SYNC_REQUEST JSON (after STATE):', messageString)
+                  wsRef.current.send(messageString)
                   log('[WS] SYNC_REQUEST sent (after STATE)')
                 } catch (err) {
                   logError('[WS] Failed to send SYNC_REQUEST:', err)
                 }
+              } else {
+                logError('[WS] Cannot send SYNC_REQUEST (after STATE):', {
+                  wsReady: wsRef.current?.readyState === WebSocket.OPEN,
+                  roomId: currentRoomId,
+                  roomIdFromParams: roomId,
+                  roomIdFromConnect: roomIdToConnect,
+                })
               }
             }, 100)
           } else if (message.type === 'SYNC_STATE') {

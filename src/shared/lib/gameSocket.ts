@@ -89,15 +89,22 @@ export function connectGameSocketDebug(
   const sendSyncRequest = () => {
     if (ws.readyState === WebSocket.OPEN) {
       try {
-        const syncMessage = {
-          type: 'SYNC_REQUEST',
-          roomId,
+        if (!roomId || typeof roomId !== 'string' || roomId.trim() === '') {
+          logError('[WS] Cannot send SYNC_REQUEST: roomId is invalid', { roomId, type: typeof roomId })
+          return
         }
+        const syncMessage = {
+          type: 'SYNC_REQUEST' as const,
+          roomId: roomId.trim(),
+        }
+        logEvent('Sending SYNC_REQUEST', syncMessage)
         ws.send(JSON.stringify(syncMessage))
-        logEvent('SYNC_REQUEST sent')
+        logEvent('SYNC_REQUEST sent successfully')
       } catch (err) {
         logError('[WS] Failed to send SYNC_REQUEST:', err)
       }
+    } else {
+      logError('[WS] Cannot send SYNC_REQUEST: WebSocket not open', { readyState: ws.readyState })
     }
   }
   

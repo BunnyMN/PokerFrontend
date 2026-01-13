@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebSocket Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #0a0015;
+      color: #00f6ff;
+      padding: 20px;
+    }
+    .status { margin: 20px 0; padding: 10px; border-radius: 4px; }
+    .connected { background: rgba(0, 255, 157, 0.2); border: 1px solid #00ff9d; }
+    .disconnected { background: rgba(255, 0, 170, 0.2); border: 1px solid #ff00aa; }
+    .connecting { background: rgba(157, 0, 255, 0.2); border: 1px solid #9d00ff; }
+    button { padding: 10px 20px; margin: 5px; background: #00f6ff; color: #0a0015; border: none; border-radius: 4px; cursor: pointer; }
+    button:disabled { background: #666; cursor: not-allowed; }
+    #log { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 4px; max-height: 400px; overflow-y: auto; margin-top: 20px; }
+    .log-entry { margin: 5px 0; padding: 5px; }
+    .log-info { color: #00f6ff; }
+    .log-success { color: #00ff9d; }
+    .log-error { color: #ff00aa; }
+  </style>
+</head>
+<body>
+  <h1>🔌 WebSocket Connection Test</h1>
+  
+  <div>
+    <input type="text" id="wsUrl" value="wss://pokerbackend-production-17fd.up.railway.app/ws" style="width: 400px; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid #00f6ff; color: #00f6ff; border-radius: 4px;">
+    <button onclick="testConnection()">Test Connection</button>
+    <button onclick="sendPing()" id="pingBtn" disabled>Send PING</button>
+  </div>
+  
+  <div id="status" class="status disconnected">Status: Disconnected</div>
+  
+  <div id="log"></div>
+
+  <script>
+    let ws = null;
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const time = new Date().toLocaleTimeString();
+      entry.textContent = `[${time}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function testConnection() {
+      const wsUrl = document.getElementById('wsUrl').value.trim();
+      
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+
+      log(`Connecting to: ${wsUrl}`, 'info');
+      document.getElementById('status').className = 'status connecting';
+      document.getElementById('status').textContent = 'Status: Connecting...';
+      document.getElementById('pingBtn').disabled = true;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        log('✅ CONNECTED! WebSocket is working!', 'success');
+        document.getElementById('status').className = 'status connected';
+        document.getElementById('status').textContent = 'Status: Connected ✓';
+        document.getElementById('pingBtn').disabled = false;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          log(`📨 Received: ${JSON.stringify(msg, null, 2)}`, 'success');
+        } catch (e) {
+          log(`📨 Received (raw): ${event.data}`, 'info');
+        }
+      };
+
+      ws.onerror = (error) => {
+        log(`❌ ERROR: ${error.message || 'Connection failed'}`, 'error');
+        document.getElementById('status').className = 'status disconnected';
+        document.getElementById('status').textContent = 'Status: Error';
+      };
+
+      ws.onclose = (event) => {
+        log(`🔌 Closed. Code: ${event.code}, Clean: ${event.wasClean}`, 'info');
+        document.getElementById('status').className = 'status disconnected';
+        document.getElementById('status').textContent = 'Status: Disconnected';
+        document.getElementById('pingBtn').disabled = true;
+      };
+    }
+
+    function sendPing() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('Not connected!', 'error');
+        return;
+      }
+      const msg = { type: 'PING' };
+      ws.send(JSON.stringify(msg));
+      log(`📤 Sent: ${JSON.stringify(msg)}`, 'info');
+    }
+  </script>
+</body>
+</html>
