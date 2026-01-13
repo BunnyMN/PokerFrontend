@@ -28,10 +28,31 @@ export function PlayingCard({
   isBack = false,
 }: PlayingCardProps) {
   const sizeClasses = {
-    xs: 'w-8 h-11 text-[0.6rem]',
-    sm: 'w-12 h-16 text-xs',
-    md: 'w-16 h-24 text-sm',
-    lg: 'w-20 h-32 text-base',
+    xs: 'w-8 h-11',
+    sm: 'w-12 h-16',
+    md: 'w-16 h-24',
+    lg: 'w-20 h-32',
+  }
+  
+  const rankSizes = {
+    xs: 'text-[0.5rem]',
+    sm: 'text-[0.65rem]',
+    md: 'text-xs',
+    lg: 'text-sm',
+  }
+  
+  const suitSizes = {
+    xs: 'text-[0.6rem]',
+    sm: 'text-[0.75rem]',
+    md: 'text-sm',
+    lg: 'text-base',
+  }
+  
+  const centerSuitSizes = {
+    xs: 'text-lg',
+    sm: 'text-xl',
+    md: 'text-2xl',
+    lg: 'text-3xl',
   }
 
   const suitSymbol = suitToSymbol(card.suit)
@@ -83,23 +104,25 @@ export function PlayingCard({
       )}
       onClick={onClick}
     >
-      {/* Card content */}
-      <div className="absolute inset-0 p-1.5 flex flex-col justify-between">
-        {/* Top left: Rank and Suit */}
-        <div className={cn('font-bold leading-tight', suitColor)}>
-          <div className="text-base font-extrabold">{card.rank}</div>
-          <div className="text-xl leading-none">{suitSymbol}</div>
-        </div>
+      {/* Card content - with overflow hidden to keep everything inside */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="h-full p-1 flex flex-col justify-between">
+          {/* Top left: Rank and Suit */}
+          <div className={cn('font-bold leading-tight', suitColor, rankSizes[size])}>
+            <div className="font-extrabold">{card.rank}</div>
+            <div className={cn('leading-none -mt-0.5', suitSizes[size])}>{suitSymbol}</div>
+          </div>
 
-        {/* Center: Large suit symbol */}
-        <div className={cn('absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2', suitColor)}>
-          <div className="text-4xl font-normal">{suitSymbol}</div>
-        </div>
+          {/* Center: Large suit symbol */}
+          <div className={cn('absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2', suitColor, centerSuitSizes[size])}>
+            <div className="font-normal">{suitSymbol}</div>
+          </div>
 
-        {/* Bottom right: Rank and Suit (rotated) */}
-        <div className={cn('font-bold self-end rotate-180 leading-tight', suitColor)}>
-          <div className="text-base font-extrabold">{card.rank}</div>
-          <div className="text-xl leading-none">{suitSymbol}</div>
+          {/* Bottom right: Rank and Suit (rotated) */}
+          <div className={cn('font-bold self-end rotate-180 leading-tight', suitColor, rankSizes[size])}>
+            <div className="font-extrabold">{card.rank}</div>
+            <div className={cn('leading-none -mt-0.5', suitSizes[size])}>{suitSymbol}</div>
+          </div>
         </div>
       </div>
 
