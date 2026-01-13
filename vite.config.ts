@@ -34,7 +34,8 @@ export default defineConfig({
     strictPort: true,
   },
   preview: {
-    port: 4173,
+    port: parseInt(process.env.PORT || '4173', 10),
+    host: '0.0.0.0',
     strictPort: true,
   },
   optimizeDeps: {
