@@ -1,8 +1,5 @@
-import React from 'react'
 import { SeatCard } from './SeatCard'
 import { PlayingCard } from './PlayingCard'
-import { cn } from '../utils/cn'
-import type { Card } from '../types/cards'
 import { normalizeCard } from '../types/cards'
 
 interface TableViewProps {
@@ -14,7 +11,6 @@ interface TableViewProps {
   eliminated: string[]
   currentUserId: string | null
   lastPlay: {playerId: string, cards: any[], kind?: string, fiveKind?: string} | null
-  renderCard: (card: any) => string
 }
 
 export function TableView({
@@ -26,7 +22,6 @@ export function TableView({
   eliminated,
   currentUserId,
   lastPlay,
-  renderCard,
 }: TableViewProps) {
   const numSeats = seatedPlayerIds.length
   if (numSeats === 0) return null

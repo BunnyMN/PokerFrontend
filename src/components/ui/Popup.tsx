@@ -3,7 +3,7 @@ import { Modal, ModalProps } from './Modal'
 import { Button } from './Button'
 import { cn } from '../../utils/cn'
 
-export interface PopupProps extends Omit<ModalProps, 'children'> {
+export interface PopupProps extends Omit<ModalProps, 'children' | 'content'> {
   children?: ReactNode
   content?: ReactNode
   actions?: {

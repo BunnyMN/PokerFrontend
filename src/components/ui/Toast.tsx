@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { cn } from '../../utils/cn'
-import { Badge } from './Badge'
 
 export interface Toast {
   id: string

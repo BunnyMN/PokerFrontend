@@ -5,13 +5,12 @@ import { connectGameSocketDebug, type GameSocketMessage, type WSEventLog } from 
 import { log, warn, error as logError } from '../lib/logger'
 import type { Room, RoomPlayer, Profile } from '../types/database'
 import type { Card } from '../types/cards'
-import { renderCard, normalizeCard } from '../types/cards'
+import { normalizeCard } from '../types/cards'
 import { TableView } from '../components/TableView'
 import { PlayingCard } from '../components/PlayingCard'
 import { QueuePanel } from '../components/QueuePanel'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
 import { Card as UICard } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { toast } from '../components/ui/Toast'
@@ -53,8 +52,8 @@ export function RoomPage() {
   
   // DEALT state
   const [yourHand, setYourHand] = useState<Card[] | null>(null)
-  const [starterPlayerId, setStarterPlayerId] = useState<string | null>(null)
-  const [starterReason, setStarterReason] = useState<"WINNER" | "WEAKEST_SINGLE" | string | null>(null)
+  const [_starterPlayerId, setStarterPlayerId] = useState<string | null>(null)
+  const [_starterReason, setStarterReason] = useState<"WINNER" | "WEAKEST_SINGLE" | string | null>(null)
   const [seatedPlayerIds, setSeatedPlayerIds] = useState<string[]>([])
   const [queuePlayerIds, setQueuePlayerIds] = useState<string[]>([])
   
@@ -64,13 +63,13 @@ export function RoomPage() {
   const [lastPlay, setLastPlay] = useState<{playerId: string, cards: Card[], kind?: string, fiveKind?: string} | null>(null)
   const [handsCount, setHandsCount] = useState<Record<string, number>>({})
   const [actionError, setActionError] = useState<string | null>(null)
-  const [canPass, setCanPass] = useState<boolean>(false) // Legacy, kept for backward compatibility (server may still send it, but PASS button uses lastPlay instead)
+  const [_canPass, setCanPass] = useState<boolean>(false) // Legacy, kept for backward compatibility (server may still send it, but PASS button uses lastPlay instead)
   const [passedPlayerIds, setPassedPlayerIds] = useState<string[]>([])
   const [roundEnd, setRoundEnd] = useState<{winnerPlayerId: string} | null>(null)
   
   // Rules and scoring
   const [scoreLimit, setScoreLimit] = useState<number>(60)
-  const [scoreboard, setScoreboard] = useState<{playerId: string, totalScore: number, eliminated: boolean}[]>([])
+  const [_scoreboard, setScoreboard] = useState<{playerId: string, totalScore: number, eliminated: boolean}[]>([])
   const [scoreLimitInput, setScoreLimitInput] = useState<number>(60)
   const [totalScores, setTotalScores] = useState<Record<string, number>>({})
   const [eliminated, setEliminated] = useState<string[]>([])
@@ -1394,7 +1393,6 @@ export function RoomPage() {
                   eliminated={eliminated}
                   currentUserId={currentUserId}
                   lastPlay={lastPlay}
-                  renderCard={renderCard}
                 />
               </div>
 

@@ -2,7 +2,6 @@ import { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Button } from './ui/Button'
-import { cn } from '../utils/cn'
 
 interface AppShellProps {
   children: ReactNode
@@ -12,7 +11,7 @@ interface AppShellProps {
   userEmail?: string | null
 }
 
-export function AppShell({ children, title, subtitle, showSignOut = true, userEmail }: AppShellProps) {
+export function AppShell({ children, showSignOut = true, userEmail }: AppShellProps) {
   const navigate = useNavigate()
   
   const handleSignOut = async () => {
