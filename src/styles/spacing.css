@@ -1,0 +1,20 @@
+/* Spacing System - Consistent spacing throughout the app */
+
+:root {
+  /* Standardized spacing scale */
+  --space-xs: 0.5rem;    /* 8px */
+  --space-sm: 0.75rem;   /* 12px */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+  --space-3xl: 4rem;     /* 64px */
+  
+  /* Component spacing */
+  --spacing-card-padding: 1.5rem;        /* 24px - Card internal padding */
+  --spacing-card-gap: 1.5rem;            /* 24px - Gap between cards */
+  --spacing-section-gap: 2rem;           /* 32px - Gap between sections */
+  --spacing-form-gap: 1.25rem;           /* 20px - Gap between form fields */
+  --spacing-button-gap: 0.75rem;         /* 12px - Gap between buttons */
+  --spacing-list-item: 0.75rem;          /* 12px - List item padding */
+}

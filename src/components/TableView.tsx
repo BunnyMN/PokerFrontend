@@ -1,5 +1,9 @@
 import React from 'react'
 import { SeatCard } from './SeatCard'
+import { PlayingCard } from './PlayingCard'
+import { cn } from '../utils/cn'
+import type { Card } from '../types/cards'
+import { normalizeCard } from '../types/cards'
 
 interface TableViewProps {
   seatedPlayerIds: string[]
@@ -27,32 +31,59 @@ export function TableView({
   const numSeats = seatedPlayerIds.length
   if (numSeats === 0) return null
 
-  // Calculate positions for seats around an oval table
-  // For 1-4 players, distribute evenly around a circle
-  const centerX = 200 // Center of table
-  const centerY = 200
-  const radiusX = 180 // Horizontal radius of oval
-  const radiusY = 140 // Vertical radius of oval
+  // Calculate positions for seats around a circular table
+  const centerX = 250
+  const centerY = 250
+  const radius = 200
 
   const getSeatPosition = (index: number, total: number) => {
-    // Start from top (270 degrees) and go clockwise
+    // Start from top (270 degrees) and distribute evenly
     const angle = (270 + (index * 360) / total) * (Math.PI / 180)
-    const x = centerX + radiusX * Math.cos(angle)
-    const y = centerY + radiusY * Math.sin(angle)
-    return { x, y }
+    const x = centerX + radius * Math.cos(angle)
+    const y = centerY + radius * Math.sin(angle)
+    return { x, y, angle: angle * (180 / Math.PI) }
   }
 
   return (
-    <div style={tableViewStyles.container}>
-      <div style={tableViewStyles.tableArea}>
-        {/* Oval table */}
-        <div style={tableViewStyles.table} />
+    <div className="flex justify-center items-center p-6 min-h-[600px] relative">
+      <div className="relative w-[500px] h-[500px]">
+        {/* Futuristic Poker Table - Circular with glowing edge */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full">
+          {/* Outer glow ring */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-900/20 via-cyan-900/20 to-pink-900/20 animate-pulse-glow" />
+          
+          {/* Table felt - deep gradient */}
+          <div 
+            className="absolute inset-2 rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(157, 0, 255, 0.3) 0%, rgba(10, 0, 21, 0.9) 50%, #0a0015 100%)',
+              border: '2px solid rgba(0, 246, 255, 0.3)',
+            }}
+          >
+            {/* Inner cyan rim light */}
+            <div className="absolute inset-0 rounded-full border-2 border-cyan-400/40 shadow-[0_0_20px_rgba(0,246,255,0.3)]" />
+            
+            {/* Subtle circuit pattern overlay */}
+            <div 
+              className="absolute inset-0 rounded-full opacity-10"
+              style={{
+                backgroundImage: `
+                  repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0, 246, 255, 0.1) 20px, rgba(0, 246, 255, 0.1) 21px),
+                  repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0, 246, 255, 0.1) 20px, rgba(0, 246, 255, 0.1) 21px)
+                `,
+              }}
+            />
+          </div>
+          
+          {/* Glowing edge */}
+          <div className="absolute inset-0 rounded-full border-4 border-cyan-400/60 shadow-[0_0_30px_rgba(0,246,255,0.5),inset_0_0_30px_rgba(0,246,255,0.2)] animate-glow-pulse" />
+        </div>
         
-        {/* Last play display in center */}
+        {/* Center Pot Display - Floating glass */}
         {lastPlay && (
-          <div style={tableViewStyles.lastPlay}>
-            <div style={tableViewStyles.lastPlayLabel}>Last Play:</div>
-            <div style={tableViewStyles.lastPlayKind}>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 glass-lg rounded-xl border border-cyan-400/50 p-4 min-w-[200px] text-center shadow-glow-cyan">
+            <div className="text-xs text-cyan-400/80 mb-2 font-heading uppercase tracking-wider">Last Play</div>
+            <div className="text-sm font-bold text-cyan-300 mb-3 font-heading text-glow-cyan">
               {(() => {
                 const cardCount = lastPlay.cards.length
                 let kind = lastPlay.kind
@@ -64,29 +95,35 @@ export function TableView({
                     : 'PLAY'
                 }
                 if (kind === 'FIVE' && lastPlay.fiveKind) {
-                  return `FIVE (${lastPlay.fiveKind})`
+                  return `${kind} (${lastPlay.fiveKind})`
                 }
                 return kind
               })()}
             </div>
-            <div style={tableViewStyles.lastPlayCards}>
-              {lastPlay.cards.map((card, idx) => (
-                <span key={idx} style={tableViewStyles.lastPlayCard}>
-                  {renderCard(card)}
-                </span>
-              ))}
+            <div className="flex gap-2 justify-center flex-wrap">
+              {lastPlay.cards.map((card, idx) => {
+                const normalizedCard = normalizeCard(card)
+                return (
+                  <PlayingCard
+                    key={idx}
+                    card={normalizedCard}
+                    size="sm"
+                    className="pointer-events-none"
+                  />
+                )
+              })}
             </div>
           </div>
         )}
 
-        {/* Seats */}
+        {/* Seats positioned around table */}
         {seatedPlayerIds.map((playerId, index) => {
           const position = getSeatPosition(index, numSeats)
           return (
             <div
               key={playerId}
+              className="absolute z-10"
               style={{
-                ...tableViewStyles.seatWrapper,
                 left: `${position.x}px`,
                 top: `${position.y}px`,
                 transform: 'translate(-50%, -50%)',
@@ -107,70 +144,4 @@ export function TableView({
       </div>
     </div>
   )
-}
-
-const tableViewStyles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '40px 20px',
-    minHeight: '500px',
-  },
-  tableArea: {
-    position: 'relative',
-    width: '400px',
-    height: '400px',
-  },
-  table: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '360px',
-    height: '280px',
-    backgroundColor: '#0d6e0d',
-    borderRadius: '50%',
-    border: '8px solid #8b4513',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-  },
-  seatWrapper: {
-    position: 'absolute',
-  },
-  lastPlay: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    transform: 'translate(-50%, -50%)',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    border: '2px solid #007bff',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-    textAlign: 'center',
-    minWidth: '150px',
-    zIndex: 5,
-  },
-  lastPlayLabel: {
-    fontSize: '11px',
-    color: '#666',
-    marginBottom: '4px',
-  },
-  lastPlayKind: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: '6px',
-  },
-  lastPlayCards: {
-    fontSize: '16px',
-    fontFamily: 'monospace',
-    display: 'flex',
-    gap: '4px',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-  },
-  lastPlayCard: {
-    display: 'inline-block',
-  },
 }

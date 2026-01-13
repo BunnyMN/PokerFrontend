@@ -7,7 +7,16 @@ import type { Room, RoomPlayer, Profile } from '../types/database'
 import type { Card } from '../types/cards'
 import { renderCard, normalizeCard } from '../types/cards'
 import { TableView } from '../components/TableView'
+import { PlayingCard } from '../components/PlayingCard'
 import { QueuePanel } from '../components/QueuePanel'
+import { AppShell } from '../components/AppShell'
+import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
+import { Card as UICard } from '../components/ui/Card'
+import { Badge } from '../components/ui/Badge'
+import { toast } from '../components/ui/Toast'
+import { Skeleton } from '../components/ui/Skeleton'
+import { cn } from '../utils/cn'
 
 const isDev = import.meta.env.DEV
 
@@ -1043,20 +1052,30 @@ export function RoomPage() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loading}>Loading room...</div>
-      </div>
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="space-y-4 w-full max-w-md">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+      </AppShell>
     )
   }
 
   if (error || !room) {
     return (
-      <div style={styles.container}>
-        <div style={styles.error}>{error || 'Room not found'}</div>
-        <button onClick={() => navigate('/lobby')} style={styles.button}>
-          Back to Lobby
-        </button>
-      </div>
+      <AppShell>
+        <div className="space-y-4">
+          <UICard>
+            <div className="p-6 text-center space-y-4">
+              <p className="text-[var(--danger)]">{error || 'Room not found'}</p>
+              <Button onClick={() => navigate('/lobby')}>Back to Lobby</Button>
+            </div>
+          </UICard>
+        </div>
+      </AppShell>
     )
   }
 
@@ -1064,206 +1083,219 @@ export function RoomPage() {
   const isOwner = currentUserId === room.owner_id
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Room: {room.code}</h1>
-          <div style={styles.meta}>Score Limit: {scoreLimit}</div>
+    <AppShell
+      title={`Room: ${room.code}`}
+      subtitle={`Score Limit: ${scoreLimit}`}
+      showSignOut={false}
+    >
+      <div className="space-y-6">
+        {/* Header Actions */}
+        <div className="flex justify-end">
+          <Button variant="danger" onClick={handleLeave} disabled={leaving} isLoading={leaving}>
+            Leave Room
+          </Button>
         </div>
-        <button onClick={handleLeave} style={styles.leaveButton} disabled={leaving}>
-          {leaving ? 'Leaving...' : 'Leave Room'}
-        </button>
-      </div>
 
-      {error && <div style={styles.errorBanner}>{error}</div>}
-
-      {/* ROUND_START Banner */}
-      {roundStart && (
-        <div style={styles.roundStartBanner}>
-          <div style={styles.roundStartContent}>
-            <strong>Round starting...</strong>
-            <span style={styles.roundStartTime}>
-              {new Date(roundStart.startedAt).toLocaleString()}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* DEALT Banner */}
-      {yourHand && (
-        <div style={styles.dealtBanner}>
-          Cards dealt. Waiting for starter...
-        </div>
-      )}
-
-      {/* Debug Panel - only in dev */}
-      {isDev && (
-        <div style={styles.debugPanel}>
-          <h3 style={styles.debugTitle}>Debug Info</h3>
-          <div style={styles.debugGrid}>
-            <div key="room-status" style={styles.debugItem}>
-              <strong>room.status:</strong> {room.status}
-            </div>
-            <div key="current-user-id" style={styles.debugItem}>
-              <strong>current auth.uid:</strong> {currentUserId || 'null'}
-            </div>
-            <div key="owner-id" style={styles.debugItem}>
-              <strong>room.owner_id:</strong> {room.owner_id}
-            </div>
-            <div key="is-owner" style={styles.debugItem}>
-              <strong>isOwner:</strong> {isOwner ? 'true' : 'false'}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* WebSocket Connection Panel */}
-      <div style={styles.wsPanel}>
-        <div style={styles.wsHeader}>
-          <h3 style={styles.wsTitle}>Game Server Connection</h3>
-          <div style={{
-            ...styles.statusBadge,
-            ...(wsStatus === 'connected' ? styles.statusConnected : {}),
-            ...(wsStatus === 'connecting' ? styles.statusConnecting : {}),
-            ...(wsStatus === 'reconnecting' ? styles.statusReconnecting : {}),
-            ...(wsStatus === 'error' ? styles.statusError : {}),
-            ...(wsStatus === 'disconnected' ? styles.statusDisconnected : {}),
-          }}>
-            {wsStatus === 'connected' && '● Connected'}
-            {wsStatus === 'connecting' && '● Connecting...'}
-            {wsStatus === 'reconnecting' && `● Reconnecting (${reconnectAttemptRef.current}/10)...`}
-            {wsStatus === 'error' && '● Error'}
-            {wsStatus === 'disconnected' && '○ Disconnected'}
-          </div>
-        </div>
-        {wsError && (
-          <div style={styles.wsError}>
-            {wsError}
+        {/* Error Banner */}
+        {error && (
+          <div className="p-4 bg-[var(--danger-bg)] border border-[var(--danger)] text-[var(--danger)] rounded-lg">
+            {error}
           </div>
         )}
-        
-        {/* WS Debug Info - only in dev */}
+
+        {/* ROUND_START Banner */}
+        {roundStart && (
+          <div className="p-4 bg-[var(--success)] text-white rounded-lg shadow-md">
+            <div className="flex justify-between items-center">
+              <strong className="text-lg">Round starting...</strong>
+              <span className="text-sm opacity-90">
+                {new Date(roundStart.startedAt).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* DEALT Banner */}
+        {yourHand && (
+          <div className="p-4 bg-[var(--info)] text-white rounded-lg shadow-md text-center font-semibold">
+            Cards dealt. Waiting for starter...
+          </div>
+        )}
+
+        {/* Debug Panel - only in dev */}
         {isDev && (
-          <div style={styles.wsDebugInfo}>
-            <div style={styles.wsDebugRow}>
-              <strong>wsUrl:</strong> {wsUrl || 'not set'}
-            </div>
-            <div style={styles.wsDebugRow}>
-              <strong>wsReadyState:</strong> {wsRef.current ? wsRef.current.readyState : 'null'} 
-              ({wsRef.current ? ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][wsRef.current.readyState] : 'null'})
-            </div>
-            <div style={styles.wsDebugRow}>
-              <strong>connectionStatus:</strong> {wsStatus}
-            </div>
-          </div>
-        )}
-
-        {wsStatus === 'disconnected' && room?.status === 'playing' && (
-          <button onClick={handleReconnect} style={styles.reconnectButton}>
-            Reconnect
-          </button>
-        )}
-        
-        {/* WS Events Log - only in dev */}
-        {isDev && wsEvents.length > 0 && (
-          <div style={styles.eventsContainer}>
-            <div style={styles.eventsTitle}>Last {wsEvents.length} WS Events:</div>
-            <div style={styles.eventsList}>
-              {wsEvents.map((event, idx) => (
-                <div key={`event-${event.timestamp}-${idx}`} style={styles.eventItem}>
-                  <span style={styles.eventTime}>
-                    {new Date(event.timestamp).toLocaleTimeString()}
-                  </span>
-                  <span style={styles.eventName}>{event.event}</span>
-                  {event.data && (
-                    <span style={styles.eventData}>
-                      {typeof event.data === 'object' ? JSON.stringify(event.data) : String(event.data)}
-                    </span>
-                  )}
+          <UICard>
+            <UICard header={<h3 className="text-sm font-semibold text-[var(--text)]">Debug Info</h3>}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs font-mono">
+                <div className="p-2 bg-[var(--bg-elevated)] rounded border border-[var(--border)]">
+                  <strong>room.status:</strong> {room.status}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* WS Messages - only in dev */}
-        {isDev && wsMessages.length > 0 && (
-          <div style={styles.messagesContainer}>
-            <div style={styles.messagesTitle}>Last {wsMessages.length} Messages:</div>
-            <div style={styles.messagesList}>
-              {wsMessages.map((msg, idx) => (
-                <div key={`msg-${msg.type}-${idx}`} style={styles.messageItem}>
-                  {JSON.stringify(msg, null, 2)}
+                <div className="p-2 bg-[var(--bg-elevated)] rounded border border-[var(--border)]">
+                  <strong>current auth.uid:</strong> {currentUserId || 'null'}
                 </div>
-              ))}
-            </div>
-          </div>
+                <div className="p-2 bg-[var(--bg-elevated)] rounded border border-[var(--border)]">
+                  <strong>room.owner_id:</strong> {room.owner_id}
+                </div>
+                <div className="p-2 bg-[var(--bg-elevated)] rounded border border-[var(--border)]">
+                  <strong>isOwner:</strong> {isOwner ? 'true' : 'false'}
+                </div>
+              </div>
+            </UICard>
+          </UICard>
         )}
-      </div>
 
-      <div style={styles.content}>
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>
-            Players ({roomStatePlayers.length > 0 ? roomStatePlayers.length : players.length})
-          </h2>
-          <div style={styles.playerList}>
-            {(() => {
-              // Use ROOM_STATE players if available, otherwise fallback to Supabase players
-              const playersToRender = roomStatePlayers.length > 0
-                ? roomStatePlayers.map(p => ({
-                    playerId: p.playerId,
-                    isReady: p.isReady,
-                  }))
-                : players.map(p => ({
-                    playerId: p.player_id,
-                    isReady: p.is_ready,
-                  }))
+        {/* WebSocket Connection Panel */}
+        <UICard>
+          <UICard header={
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-semibold text-[var(--text)]">Game Server Connection</h3>
+              <Badge
+                variant={
+                  wsStatus === 'connected' ? 'success' :
+                  wsStatus === 'connecting' || wsStatus === 'reconnecting' ? 'warning' :
+                  wsStatus === 'error' ? 'danger' : 'default'
+                }
+              >
+                {wsStatus === 'connected' && '● Connected'}
+                {wsStatus === 'connecting' && '● Connecting...'}
+                {wsStatus === 'reconnecting' && `● Reconnecting (${reconnectAttemptRef.current}/10)...`}
+                {wsStatus === 'error' && '● Error'}
+                {wsStatus === 'disconnected' && '○ Disconnected'}
+              </Badge>
+            </div>
+          }>
+            {wsError && (
+              <div className="mb-4 p-3 bg-[var(--danger-bg)] border border-[var(--danger)] text-[var(--danger)] rounded-lg text-sm">
+                {wsError}
+              </div>
+            )}
+            
+            {/* WS Debug Info - only in dev */}
+            {isDev && (
+              <div className="mb-4 p-3 bg-[var(--bg-elevated)] rounded text-xs font-mono space-y-1">
+                <div><strong>wsUrl:</strong> {wsUrl || 'not set'}</div>
+                <div>
+                  <strong>wsReadyState:</strong> {wsRef.current ? wsRef.current.readyState : 'null'} 
+                  ({wsRef.current ? ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][wsRef.current.readyState] : 'null'})
+                </div>
+                <div><strong>connectionStatus:</strong> {wsStatus}</div>
+              </div>
+            )}
 
-              if (playersToRender.length === 0) {
-                return <div style={styles.empty}>No players in room</div>
-              }
-
-              return playersToRender.map((player) => {
-                const isCurrentPlayer = player.playerId === currentUserId
-                const hasPassed = passedPlayerIds.includes(player.playerId)
-                const isCurrentTurn = player.playerId === currentTurnPlayerId
-
-                return (
-                  <div
-                    key={player.playerId}
-                    style={{
-                      ...styles.playerItem,
-                      ...(isCurrentPlayer ? styles.currentPlayer : {}),
-                      ...(isCurrentTurn ? styles.currentTurnPlayer : {}),
-                    }}
-                  >
-                    <div style={styles.playerInfo}>
-                      <div style={styles.playerName}>{player.playerId}</div>
-                      {isOwner && player.playerId === room.owner_id && (
-                        <div style={styles.ownerBadge}>Owner</div>
-                      )}
-                      {hasPassed && (
-                        <div style={styles.passedBadge}>Passed</div>
+            {wsStatus === 'disconnected' && room?.status === 'playing' && (
+              <Button size="sm" onClick={handleReconnect}>Reconnect</Button>
+            )}
+            
+            {/* WS Events Log - only in dev */}
+            {isDev && wsEvents.length > 0 && (
+              <div className="mt-4">
+                <div className="text-sm font-semibold text-[var(--text-muted)] mb-2">
+                  Last {wsEvents.length} WS Events:
+                </div>
+                <div className="max-h-[200px] overflow-y-auto border border-[var(--border)] rounded p-2 bg-[var(--bg-elevated)] text-xs font-mono space-y-1">
+                  {wsEvents.map((event, idx) => (
+                    <div key={`event-${event.timestamp}-${idx}`} className="flex gap-2 p-1 bg-[var(--bg-surface)] rounded border border-[var(--border)]">
+                      <span className="text-[var(--text-muted)] min-w-[80px]">
+                        {new Date(event.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className="text-[var(--info)] font-semibold min-w-[150px]">{event.event}</span>
+                      {event.data && (
+                        <span className="text-[var(--text)] flex-1 break-all">
+                          {typeof event.data === 'object' ? JSON.stringify(event.data) : String(event.data)}
+                        </span>
                       )}
                     </div>
-                    <div style={styles.playerStatus}>
-                      {player.isReady ? (
-                        <span style={styles.ready}>✓ Ready</span>
-                      ) : (
-                        <span style={styles.notReady}>Not Ready</span>
-                      )}
-                      {isCurrentTurn && (
-                        <span style={styles.turnIndicator}>• Your Turn</span>
-                      )}
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* WS Messages - only in dev */}
+            {isDev && wsMessages.length > 0 && (
+              <div className="mt-4">
+                <div className="text-sm font-semibold text-[var(--text-muted)] mb-2">
+                  Last {wsMessages.length} Messages:
+                </div>
+                <div className="max-h-[300px] overflow-y-auto border border-[var(--border)] rounded p-2 bg-[var(--bg-elevated)] text-xs font-mono space-y-2">
+                  {wsMessages.map((msg, idx) => (
+                    <div key={`msg-${msg.type}-${idx}`} className="p-2 bg-[var(--bg-surface)] rounded border border-[var(--border)] whitespace-pre-wrap break-all">
+                      {JSON.stringify(msg, null, 2)}
                     </div>
-                  </div>
-                )
-              })
-            })()}
-          </div>
-        </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </UICard>
+        </UICard>
 
-        <div style={styles.actions}>
+        {/* Players Section */}
+        <UICard>
+          <UICard header={
+            <h2 className="text-lg font-semibold text-[var(--text)]">
+              Players ({roomStatePlayers.length > 0 ? roomStatePlayers.length : players.length})
+            </h2>
+          }>
+            <div className="space-y-3">
+              {(() => {
+                // Use ROOM_STATE players if available, otherwise fallback to Supabase players
+                const playersToRender = roomStatePlayers.length > 0
+                  ? roomStatePlayers.map(p => ({
+                      playerId: p.playerId,
+                      isReady: p.isReady,
+                    }))
+                  : players.map(p => ({
+                      playerId: p.player_id,
+                      isReady: p.is_ready,
+                    }))
+
+                if (playersToRender.length === 0) {
+                  return <p className="text-center text-[var(--text-muted)] py-8">No players in room</p>
+                }
+
+                return playersToRender.map((player) => {
+                  const isCurrentPlayer = player.playerId === currentUserId
+                  const hasPassed = passedPlayerIds.includes(player.playerId)
+                  const isCurrentTurn = player.playerId === currentTurnPlayerId
+
+                  return (
+                    <div
+                      key={player.playerId}
+                      className={cn(
+                        'flex justify-between items-center p-4 rounded-lg border transition-all',
+                        isCurrentPlayer && 'bg-[var(--primary-bg)] border-[var(--primary)]',
+                        isCurrentTurn && 'bg-[var(--warning-bg)] border-[var(--warning)]',
+                        !isCurrentPlayer && !isCurrentTurn && 'bg-[var(--bg-elevated)] border-[var(--border)] hover:bg-[var(--surface-hover)]'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-[var(--text)]">{player.playerId}</span>
+                        {isOwner && player.playerId === room.owner_id && (
+                          <Badge variant="warning" size="sm">Owner</Badge>
+                        )}
+                        {hasPassed && (
+                          <Badge variant="default" size="sm">Passed</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {player.isReady ? (
+                          <Badge variant="success" size="sm">✓ Ready</Badge>
+                        ) : (
+                          <span className="text-sm text-[var(--text-muted)]">Not Ready</span>
+                        )}
+                        {isCurrentTurn && (
+                          <Badge variant="warning" size="sm">• Your Turn</Badge>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
+            </div>
+          </UICard>
+        </UICard>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
           {currentUserId && (() => {
             const roomStatePlayer = roomStatePlayers.find(p => p.playerId === currentUserId)
             const currentReady = roomStatePlayer 
@@ -1272,94 +1304,87 @@ export function RoomPage() {
             const isDisabled = updatingReady || wsStatus !== 'connected' || !!roundStart
             
             return (
-              <button
+              <Button
                 onClick={handleToggleReady}
-                style={{
-                  ...styles.button,
-                  ...(currentReady ? styles.readyButton : styles.notReadyButton),
-                  ...(isDisabled ? styles.buttonDisabled : {}),
-                }}
+                variant={currentReady ? 'success' : 'secondary'}
                 disabled={isDisabled}
+                isLoading={updatingReady}
                 title={wsStatus !== 'connected' ? 'Connect first' : roundStart ? 'Round already started' : ''}
               >
                 {wsStatus !== 'connected' 
                   ? 'Connect first'
                   : roundStart
                   ? 'Round started'
-                  : updatingReady
-                  ? 'Updating...'
                   : currentReady 
                   ? 'Mark Not Ready' 
                   : 'Mark Ready'}
-              </button>
+              </Button>
             )
           })()}
 
           {/* Owner Rules Setting */}
           {isOwner && room.status !== 'playing' && !roundStart && (
-            <div style={styles.rulesSection}>
-              <div style={styles.rulesInputGroup}>
-                <label htmlFor="scoreLimit" style={styles.rulesLabel}>
-                  Score Limit (1-60):
-                </label>
-                <input
-                  id="scoreLimit"
-                  type="number"
-                  min="1"
-                  max="60"
-                  value={scoreLimitInput}
-                  onChange={(e) => setScoreLimitInput(Math.min(60, Math.max(1, Number(e.target.value) || 60)))}
-                  style={styles.rulesInput}
-                />
-                <button
-                  onClick={() => {
-                    if (scoreLimitInput >= 1 && scoreLimitInput <= 60) {
-                      sendSetRulesMessage(scoreLimitInput)
-                    }
-                  }}
-                  style={styles.rulesButton}
-                  disabled={wsStatus !== 'connected' || scoreLimitInput < 1 || scoreLimitInput > 60}
-                  title={wsStatus !== 'connected' ? 'WebSocket disconnected' : ''}
-                >
-                  Set Rules
-                </button>
-              </div>
+            <div className="flex items-center gap-3 p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border)]">
+              <label htmlFor="scoreLimit" className="text-sm font-medium text-[var(--text)]">
+                Score Limit (1-60):
+              </label>
+              <input
+                id="scoreLimit"
+                type="number"
+                min="1"
+                max="60"
+                value={scoreLimitInput}
+                onChange={(e) => setScoreLimitInput(Math.min(60, Math.max(1, Number(e.target.value) || 60)))}
+                className="w-20 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+              />
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (scoreLimitInput >= 1 && scoreLimitInput <= 60) {
+                    sendSetRulesMessage(scoreLimitInput)
+                    toast.success('Score limit updated')
+                  }
+                }}
+                disabled={wsStatus !== 'connected' || scoreLimitInput < 1 || scoreLimitInput > 60}
+                title={wsStatus !== 'connected' ? 'WebSocket disconnected' : ''}
+              >
+                Set Rules
+              </Button>
             </div>
           )}
           
           {isOwner && room.status !== 'playing' && !roundStart && (
-            <button 
-              type="button" 
-              onClick={handleStart} 
-              style={styles.startButton}
+            <Button 
+              onClick={handleStart}
               disabled={isStarting}
+              isLoading={isStarting}
             >
-              {isStarting ? 'Starting...' : 'Start Game'}
-            </button>
+              Start Game
+            </Button>
           )}
         </div>
 
         {/* Game Area - Poker-style Table UI */}
         {yourHand && room?.status === 'playing' && (
-          <div style={styles.gameArea}>
+          <div className="space-y-6">
             {/* Round End Banner */}
             {roundEnd && (
-              <div style={styles.roundEndBanner}>
-                <strong>Round ended. Winner: {roundEnd.winnerPlayerId}</strong>
+              <div className="p-4 bg-[var(--success)] text-white rounded-lg shadow-md text-center">
+                <strong className="text-lg">Round ended. Winner: {roundEnd.winnerPlayerId}</strong>
               </div>
             )}
 
             {/* Action Error Banner */}
             {actionError && (
-              <div style={styles.actionErrorBanner}>
+              <div className="p-3 bg-[var(--danger-bg)] border border-[var(--danger)] text-[var(--danger)] rounded-lg text-sm font-medium">
                 {actionError}
               </div>
             )}
 
             {/* Main Game Layout: Table + Queue Panel */}
-            <div style={styles.gameLayout}>
+            <div className="flex flex-col lg:flex-row gap-6 justify-center">
               {/* Table View */}
-              <div style={styles.tableSection}>
+              <div className="flex-1 min-w-0">
                 <TableView
                   seatedPlayerIds={seatedPlayerIds}
                   handsCount={handsCount}
@@ -1374,7 +1399,7 @@ export function RoomPage() {
               </div>
 
               {/* Queue Panel */}
-              <div style={styles.queueSection}>
+              <div className="lg:w-80">
                 <QueuePanel
                   queuePlayerIds={queuePlayerIds}
                   seatedPlayerIds={seatedPlayerIds}
@@ -1388,691 +1413,85 @@ export function RoomPage() {
             </div>
 
             {/* Your Hand and Controls (Bottom Center) */}
-            <div style={styles.playerArea}>
-              <div style={styles.handContainer}>
-                <div style={styles.handTitle}>
-                  Your Hand ({yourHand.length} cards)
-                  {selectedCards.length > 0 && (
-                    <span style={styles.selectedCount}> • Selected: {selectedCards.length}/5</span>
-                  )}
+            <UICard>
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-heading font-bold text-cyan-300 text-glow-cyan mb-4">
+                    Your Hand ({yourHand.length} cards)
+                    {selectedCards.length > 0 && (
+                      <span className="ml-2 text-sm text-lime-400 text-glow-lime font-medium">
+                        • Selected: {selectedCards.length}/5
+                      </span>
+                    )}
+                  </h3>
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    {yourHand.map((card, idx) => {
+                      const isSelected = selectedCards.some(
+                        (c) => c.rank === card.rank && c.suit === card.suit
+                      )
+                      return (
+                        <PlayingCard
+                          key={idx}
+                          card={card}
+                          isSelected={isSelected}
+                          onClick={() => handleCardClick(card)}
+                          size="md"
+                        />
+                      )
+                    })}
+                  </div>
                 </div>
-                <div style={styles.handGrid}>
-                  {yourHand.map((card, idx) => {
-                    const isSelected = selectedCards.some(
-                      (c) => c.rank === card.rank && c.suit === card.suit
-                    )
-                    return (
-                      <div 
-                        key={idx} 
-                        style={{
-                          ...styles.cardItem,
-                          ...(isSelected ? styles.cardItemSelected : {}),
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => handleCardClick(card)}
-                      >
-                        {renderCard(card)}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
 
-              {/* Play/Pass Buttons */}
-              {!roundEnd && (
-                <div style={styles.gameActions}>
-                  <button
-                    onClick={handlePlay}
-                    style={{
-                      ...styles.button,
-                      ...styles.playButton,
-                      ...(() => {
+                {/* Play/Pass Buttons */}
+                {!roundEnd && (
+                  <div className="flex gap-4 justify-center pt-2">
+                    <Button
+                      onClick={handlePlay}
+                      variant="success"
+                      disabled={(() => {
                         const validLengths = [1, 2, 3, 5]
-                        const isValidSelection = validLengths.includes(selectedCards.length)
-                        return (!isValidSelection || !isMyTurn || wsStatus !== 'connected' ? styles.buttonDisabled : {})
-                      })(),
-                    }}
-                    disabled={(() => {
-                      const validLengths = [1, 2, 3, 5]
-                      return !validLengths.includes(selectedCards.length) || !isMyTurn || wsStatus !== 'connected'
-                    })()}
-                    title={
-                      wsStatus !== 'connected' 
-                        ? 'WebSocket disconnected' 
-                        : !isMyTurn 
-                        ? 'Not your turn' 
-                        : selectedCards.length === 0 
-                        ? 'Select 1, 2, 3, or 5 cards to play' 
-                        : selectedCards.length === 4
-                        ? '4 cards not allowed. Select 1, 2, 3, or 5 cards'
-                        : selectedCards.length > 5
-                        ? 'Maximum 5 cards allowed'
-                        : ''
-                    }
-                  >
-                    PLAY {selectedCards.length > 0 && `(${selectedCards.length})`}
-                  </button>
-                  <button
-                    onClick={handlePass}
-                    style={{
-                      ...styles.button,
-                      ...styles.passButton,
-                      ...(!isMyTurn || !lastPlay || wsStatus !== 'connected' ? styles.buttonDisabled : {}),
-                    }}
-                    disabled={!isMyTurn || !lastPlay || wsStatus !== 'connected'}
-                    title={
-                      wsStatus !== 'connected' 
-                        ? 'WebSocket disconnected' 
-                        : !isMyTurn 
-                        ? 'Not your turn' 
-                        : !lastPlay 
-                        ? 'You must start the trick' 
-                        : ''
-                    }
-                  >
-                    PASS
-                  </button>
-                </div>
-              )}
-            </div>
+                        return !validLengths.includes(selectedCards.length) || !isMyTurn || wsStatus !== 'connected'
+                      })()}
+                      title={
+                        wsStatus !== 'connected' 
+                          ? 'WebSocket disconnected' 
+                          : !isMyTurn 
+                          ? 'Not your turn' 
+                          : selectedCards.length === 0 
+                          ? 'Select 1, 2, 3, or 5 cards to play' 
+                          : selectedCards.length === 4
+                          ? '4 cards not allowed. Select 1, 2, 3, or 5 cards'
+                          : selectedCards.length > 5
+                          ? 'Maximum 5 cards allowed'
+                          : ''
+                      }
+                    >
+                      PLAY {selectedCards.length > 0 && `(${selectedCards.length})`}
+                    </Button>
+                    <Button
+                      onClick={handlePass}
+                      variant="warning"
+                      disabled={!isMyTurn || !lastPlay || wsStatus !== 'connected'}
+                      title={
+                        wsStatus !== 'connected' 
+                          ? 'WebSocket disconnected' 
+                          : !isMyTurn 
+                          ? 'Not your turn' 
+                          : !lastPlay 
+                          ? 'You must start the trick' 
+                          : ''
+                      }
+                    >
+                      PASS
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </UICard>
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-    padding: '20px',
-  },
-  loading: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    fontSize: '18px',
-    color: '#666',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  title: {
-    margin: '0 0 8px 0',
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  meta: {
-    fontSize: '14px',
-    color: '#666',
-  },
-  leaveButton: {
-    padding: '10px 20px',
-    fontSize: '14px',
-    color: 'white',
-    backgroundColor: '#dc3545',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  errorBanner: {
-    padding: '12px',
-    backgroundColor: '#fee',
-    color: '#c33',
-    borderRadius: '4px',
-    marginBottom: '20px',
-    fontSize: '14px',
-  },
-  content: {
-    maxWidth: '800px',
-    margin: '0 auto',
-  },
-  section: {
-    backgroundColor: 'white',
-    padding: '24px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  sectionTitle: {
-    margin: '0 0 16px 0',
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  playerList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  empty: {
-    padding: '20px',
-    textAlign: 'center',
-    color: '#999',
-    fontSize: '14px',
-  },
-  playerItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-  },
-  currentPlayer: {
-    backgroundColor: '#f0f8ff',
-    borderColor: '#007bff',
-  },
-  currentTurnPlayer: {
-    backgroundColor: '#fff3cd',
-    borderColor: '#ffc107',
-  },
-  playerInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  playerName: {
-    fontSize: '16px',
-    fontWeight: '500',
-    color: '#333',
-  },
-  ownerBadge: {
-    padding: '4px 8px',
-    fontSize: '12px',
-    backgroundColor: '#ffc107',
-    color: '#333',
-    borderRadius: '4px',
-    fontWeight: '600',
-    marginLeft: '8px',
-  },
-  passedBadge: {
-    fontSize: '12px',
-    color: '#999',
-    fontStyle: 'italic',
-    marginLeft: '8px',
-  },
-  turnIndicator: {
-    fontSize: '12px',
-    color: '#ff9800',
-    fontWeight: 'bold',
-    marginLeft: '8px',
-  },
-  playerStatus: {
-    fontSize: '14px',
-  },
-  ready: {
-    color: '#28a745',
-    fontWeight: '600',
-  },
-  notReady: {
-    color: '#999',
-  },
-  actions: {
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'center',
-  },
-  button: {
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '600',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  readyButton: {
-    backgroundColor: '#28a745',
-    color: 'white',
-  },
-  notReadyButton: {
-    backgroundColor: '#6c757d',
-    color: 'white',
-  },
-  startButton: {
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '600',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  error: {
-    padding: '16px',
-    backgroundColor: '#fee',
-    color: '#c33',
-    borderRadius: '4px',
-    marginBottom: '20px',
-    textAlign: 'center',
-  },
-  wsPanel: {
-    backgroundColor: 'white',
-    padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  wsHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '12px',
-  },
-  wsTitle: {
-    margin: 0,
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  statusBadge: {
-    padding: '6px 12px',
-    borderRadius: '4px',
-    fontSize: '14px',
-    fontWeight: '500',
-  },
-  statusConnected: {
-    backgroundColor: '#d4edda',
-    color: '#155724',
-  },
-  statusConnecting: {
-    backgroundColor: '#fff3cd',
-    color: '#856404',
-  },
-  statusReconnecting: {
-    backgroundColor: '#ffeaa7',
-    color: '#856404',
-    animation: 'pulse 2s infinite',
-  },
-  statusError: {
-    backgroundColor: '#f8d7da',
-    color: '#721c24',
-  },
-  statusDisconnected: {
-    backgroundColor: '#e2e3e5',
-    color: '#383d41',
-  },
-  wsError: {
-    padding: '10px',
-    backgroundColor: '#fee',
-    color: '#c33',
-    borderRadius: '4px',
-    marginBottom: '12px',
-    fontSize: '14px',
-  },
-  reconnectButton: {
-    padding: '8px 16px',
-    fontSize: '14px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    marginBottom: '12px',
-  },
-  messagesContainer: {
-    marginTop: '12px',
-  },
-  messagesTitle: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: '8px',
-  },
-  messagesList: {
-    maxHeight: '300px',
-    overflowY: 'auto',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    padding: '8px',
-    backgroundColor: '#f9f9f9',
-  },
-  messageItem: {
-    padding: '8px',
-    marginBottom: '8px',
-    fontSize: '12px',
-    fontFamily: 'monospace',
-    backgroundColor: 'white',
-    borderRadius: '4px',
-    border: '1px solid #eee',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-all',
-  },
-  wsDebugInfo: {
-    marginTop: '12px',
-    padding: '10px',
-    backgroundColor: '#f9f9f9',
-    borderRadius: '4px',
-    fontSize: '12px',
-    fontFamily: 'monospace',
-  },
-  wsDebugRow: {
-    marginBottom: '6px',
-    padding: '4px',
-  },
-  eventsContainer: {
-    marginTop: '12px',
-  },
-  eventsTitle: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: '8px',
-  },
-  eventsList: {
-    maxHeight: '200px',
-    overflowY: 'auto',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    padding: '8px',
-    backgroundColor: '#f9f9f9',
-    fontSize: '11px',
-    fontFamily: 'monospace',
-  },
-  eventItem: {
-    padding: '4px',
-    marginBottom: '4px',
-    backgroundColor: 'white',
-    borderRadius: '3px',
-    border: '1px solid #eee',
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'flex-start',
-  },
-  eventTime: {
-    color: '#999',
-    minWidth: '80px',
-  },
-  eventName: {
-    color: '#0066cc',
-    fontWeight: '600',
-    minWidth: '150px',
-  },
-  eventData: {
-    color: '#333',
-    flex: 1,
-    wordBreak: 'break-all',
-  },
-  debugPanel: {
-    backgroundColor: 'white',
-    padding: '16px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #ddd',
-  },
-  debugTitle: {
-    margin: '0 0 12px 0',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  debugGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '8px',
-    fontSize: '12px',
-    fontFamily: 'monospace',
-  },
-  debugItem: {
-    padding: '6px',
-    backgroundColor: '#f9f9f9',
-    borderRadius: '4px',
-    border: '1px solid #eee',
-  },
-  roundStartBanner: {
-    padding: '16px',
-    backgroundColor: '#28a745',
-    color: 'white',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  roundStartContent: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: '18px',
-    fontWeight: '600',
-  },
-  roundStartTime: {
-    fontSize: '14px',
-    fontWeight: '400',
-    opacity: 0.9,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  },
-  dealtBanner: {
-    padding: '16px',
-    backgroundColor: '#17a2b8',
-    color: 'white',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    fontSize: '16px',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  gameInfo: {
-    marginBottom: '20px',
-    padding: '12px',
-    backgroundColor: '#f9f9f9',
-    borderRadius: '4px',
-  },
-  gameInfoRow: {
-    marginBottom: '8px',
-    fontSize: '14px',
-    color: '#333',
-  },
-  handContainer: {
-    marginTop: '16px',
-  },
-  handTitle: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: '12px',
-  },
-  selectedCount: {
-    fontSize: '14px',
-    color: '#007bff',
-    fontWeight: '500',
-  },
-  handGrid: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
-  cardItem: {
-    padding: '8px 12px',
-    backgroundColor: 'white',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '16px',
-    fontFamily: 'monospace',
-    minWidth: '50px',
-    textAlign: 'center',
-    transition: 'all 0.2s',
-  },
-  cardItemSelected: {
-    backgroundColor: '#007bff',
-    color: 'white',
-    borderColor: '#007bff',
-    transform: 'scale(1.1)',
-    boxShadow: '0 2px 8px rgba(0, 123, 255, 0.4)',
-  },
-  gameStateInfo: {
-    marginBottom: '20px',
-    padding: '12px',
-    backgroundColor: '#f0f0f0',
-    borderRadius: '4px',
-  },
-  gameStateRow: {
-    marginBottom: '6px',
-    fontSize: '14px',
-    color: '#333',
-  },
-  actionErrorBanner: {
-    padding: '12px',
-    backgroundColor: '#f8d7da',
-    color: '#721c24',
-    borderRadius: '4px',
-    marginBottom: '16px',
-    fontSize: '14px',
-    fontWeight: '500',
-  },
-  gameActions: {
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'center',
-    marginTop: '20px',
-  },
-  playButton: {
-    backgroundColor: '#28a745',
-    color: 'white',
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '600',
-  },
-  passButton: {
-    backgroundColor: '#ffc107',
-    color: '#333',
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '600',
-  },
-  roundEndBanner: {
-    padding: '16px',
-    backgroundColor: '#28a745',
-    color: 'white',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    fontSize: '18px',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  rulesSection: {
-    marginBottom: '16px',
-    padding: '16px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    border: '1px solid #dee2e6',
-  },
-  rulesInputGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  rulesLabel: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#333',
-  },
-  rulesInput: {
-    padding: '8px 12px',
-    fontSize: '14px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    width: '80px',
-  },
-  rulesButton: {
-    padding: '8px 16px',
-    fontSize: '14px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  scoreboard: {
-    marginBottom: '20px',
-    padding: '16px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    border: '1px solid #dee2e6',
-  },
-  scoreboardTitle: {
-    margin: '0 0 12px 0',
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  scoreboardList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  scoreboardItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 12px',
-    backgroundColor: 'white',
-    borderRadius: '4px',
-    border: '1px solid #ddd',
-  },
-  scoreboardItemEliminated: {
-    backgroundColor: '#f8d7da',
-    borderColor: '#f5c6cb',
-    opacity: 0.7,
-  },
-  scoreboardPlayer: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#333',
-  },
-  scoreboardScore: {
-    fontSize: '14px',
-    color: '#666',
-  },
-  eliminatedBadge: {
-    color: '#dc3545',
-    fontWeight: '600',
-    marginLeft: '8px',
-  },
-  gameArea: {
-    width: '100%',
-    padding: '20px',
-  },
-  gameLayout: {
-    display: 'flex',
-    gap: '20px',
-    marginBottom: '40px',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  tableSection: {
-    flex: '1 1 600px',
-    minWidth: '400px',
-    maxWidth: '800px',
-  },
-  queueSection: {
-    flex: '0 0 300px',
-    minWidth: '280px',
-  },
-  playerArea: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '20px',
-    padding: '20px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    border: '1px solid #dee2e6',
-  },
 }
 
