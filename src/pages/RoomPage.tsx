@@ -54,7 +54,7 @@ export function RoomPage() {
   // DEALT state
   const [yourHand, setYourHand] = useState<Card[] | null>(null)
   const [handOrder, setHandOrder] = useState<number[]>([]) // Custom order indices
-  const [pendingPlayCards, setPendingPlayCards] = useState<Card[] | null>(null) // Cards we're trying to play (for error recovery)
+  const [_pendingPlayCards, setPendingPlayCards] = useState<Card[] | null>(null) // Cards we're trying to play (for error recovery) - state for setter, ref for reading
   const pendingPlayCardsRef = useRef<Card[] | null>(null) // Ref to access current pending cards in message handlers
   const [_starterPlayerId, setStarterPlayerId] = useState<string | null>(null)
   const [_starterReason, setStarterReason] = useState<"WINNER" | "WEAKEST_SINGLE" | string | null>(null)
@@ -1580,7 +1580,7 @@ export function RoomPage() {
                         // Default sorted order
                         return sortCards(yourHand)
                       }
-                    })().map((card, displayIdx) => {
+                    })().map((card) => {
                       const isSelected = selectedCards.some(
                         (c) => cardsEqual(c, card)
                       )
