@@ -6,6 +6,7 @@ import { log, warn, error as logError } from '../lib/logger'
 import type { Room, RoomPlayer, Profile } from '../types/database'
 import type { Card } from '../types/cards'
 import { normalizeCard } from '../types/cards'
+import { sortCards, cardsEqual } from '../utils/cardSort'
 import { TableView } from '../components/TableView'
 import { PlayingCard } from '../components/PlayingCard'
 import { QueuePanel } from '../components/QueuePanel'
@@ -52,6 +53,9 @@ export function RoomPage() {
   
   // DEALT state
   const [yourHand, setYourHand] = useState<Card[] | null>(null)
+  const [handOrder, setHandOrder] = useState<number[]>([]) // Custom order indices
+  const [pendingPlayCards, setPendingPlayCards] = useState<Card[] | null>(null) // Cards we're trying to play (for error recovery)
+  const pendingPlayCardsRef = useRef<Card[] | null>(null) // Ref to access current pending cards in message handlers
   const [_starterPlayerId, setStarterPlayerId] = useState<string | null>(null)
   const [_starterReason, setStarterReason] = useState<"WINNER" | "WEAKEST_SINGLE" | string | null>(null)
   const [seatedPlayerIds, setSeatedPlayerIds] = useState<string[]>([])
@@ -247,6 +251,9 @@ export function RoomPage() {
             }, 100)
           } else if (message.type === 'SYNC_STATE') {
             log('[WS] Received SYNC_STATE')
+            // Clear any pending play cards (state synced from server)
+            setPendingPlayCards(null)
+            pendingPlayCardsRef.current = null
             // Apply SYNC_STATE - overwrite all relevant state (do NOT merge)
             if (message.seatedPlayerIds && Array.isArray(message.seatedPlayerIds)) {
               setSeatedPlayerIds(message.seatedPlayerIds)
@@ -285,7 +292,9 @@ export function RoomPage() {
             }
             if (message.yourHand && Array.isArray(message.yourHand)) {
               const normalizedHand = message.yourHand.map((card: any) => normalizeCard(card))
-              setYourHand(normalizedHand)
+              const sortedHand = sortCards(normalizedHand)
+              setYourHand(sortedHand)
+              setHandOrder([]) // Reset custom order when new hand is received
             }
             if (typeof message.scoreLimit === 'number') {
               setScoreLimit(message.scoreLimit)
@@ -332,11 +341,16 @@ export function RoomPage() {
             log('[WS] Received DEALT')
             // Hide round end banner when new hand is dealt
             setRoundEnd(null)
+            // Clear any pending play cards (new hand dealt)
+            setPendingPlayCards(null)
+            pendingPlayCardsRef.current = null
             if (message.yourHand && Array.isArray(message.yourHand)) {
               // Normalize cards to handle various formats (numeric, symbol, or canonical)
               const normalizedHand = message.yourHand.map((card: any) => normalizeCard(card))
-              setYourHand(normalizedHand)
+              const sortedHand = sortCards(normalizedHand)
+              setYourHand(sortedHand)
               setSelectedCards([]) // Reset selection when new hand is dealt
+              setHandOrder([]) // Reset custom order when new hand is dealt
             }
             if (message.starterPlayerId) {
               setStarterPlayerId(message.starterPlayerId)
@@ -362,6 +376,13 @@ export function RoomPage() {
                 fiveKind: message.lastPlay.fiveKind // STRAIGHT, FLUSH, FULL_HOUSE, FOUR, STRAIGHT_FLUSH
               }
               setLastPlay(normalizedLastPlay)
+              
+              // If this is our play (successful), clear pending cards
+              if (normalizedLastPlay.playerId === currentUserId && pendingPlayCardsRef.current) {
+                log('[WS] Play successful, clearing pending cards')
+                setPendingPlayCards(null)
+                pendingPlayCardsRef.current = null
+              }
             } else {
               setLastPlay(null)
             }
@@ -399,6 +420,27 @@ export function RoomPage() {
             const errorMsg = message.error || message.message || 'Action error'
             logError('[WS] Received ACTION_ERROR:', errorMsg)
             setActionError(errorMsg)
+            
+            // Restore cards if we had pending play cards (error recovery)
+            const pendingCards = pendingPlayCardsRef.current
+            if (pendingCards && pendingCards.length > 0) {
+              log('[WS] Restoring cards after ACTION_ERROR:', pendingCards)
+              setYourHand((prevHand) => {
+                if (!prevHand) return prevHand
+                
+                // Add back the pending cards
+                const restoredHand = [...prevHand, ...pendingCards]
+                return sortCards(restoredHand)
+              })
+              
+              // Reset handOrder since we're restoring cards
+              setHandOrder([])
+              
+              // Clear pending cards
+              setPendingPlayCards(null)
+              pendingPlayCardsRef.current = null
+            }
+            
             // Do NOT clear selection on error - user may want to adjust
             // Clear error after 5 seconds
             setTimeout(() => setActionError(null), 5000)
@@ -789,7 +831,55 @@ export function RoomPage() {
       log('[PLAY] Sending PLAY message')
       wsRef.current.send(JSON.stringify(playMessage))
       setActionError(null) // Clear any previous errors
-      setSelectedCards([]) // Clear selection after successful send
+      
+      // Store cards we're trying to play (for error recovery)
+      setPendingPlayCards(cards)
+      pendingPlayCardsRef.current = cards
+      
+      // Optimistically remove played cards from yourHand in real-time
+      // If server returns error, we'll restore them
+      setYourHand((prevHand) => {
+        if (!prevHand) return prevHand
+        
+        // Filter out the played cards
+        let newHand = prevHand.filter((handCard) => {
+          return !cards.some(
+            (playedCard) => cardsEqual(playedCard, handCard)
+          )
+        })
+        
+        // Re-sort the remaining cards to maintain proper order
+        newHand = sortCards(newHand)
+        
+        // Update handOrder to remove indices of played cards
+        setHandOrder((prevOrder) => {
+          if (prevOrder.length === 0) return []
+          
+          // Find indices of played cards in original hand
+          const playedIndices = new Set(
+            cards.map((playedCard) =>
+              prevHand.findIndex((handCard) => cardsEqual(handCard, playedCard))
+            ).filter((idx) => idx !== -1)
+          )
+          
+          // Remove played indices and adjust remaining indices
+          const newOrder = prevOrder
+            .filter((idx) => !playedIndices.has(idx))
+            .map((idx) => {
+              // Adjust index: count how many played cards were before this index
+              const adjustment = Array.from(playedIndices).filter((playedIdx) => playedIdx < idx).length
+              return idx - adjustment
+            })
+          
+          return newOrder
+        })
+        
+        return newHand
+      })
+      
+      // Clear selection after sending (optimistic)
+      setSelectedCards([])
+      
       return true
     } catch (err) {
       logError('[PLAY] Failed to send PLAY message:', err)
@@ -1460,27 +1550,88 @@ export function RoomPage() {
             <UICard>
               <div className="space-y-5">
                 <div>
-                  <h3 className="text-lg font-heading font-bold text-cyan-300 text-glow-cyan mb-4">
-                    Your Hand ({yourHand.length} cards)
-                    {selectedCards.length > 0 && (
-                      <span className="ml-2 text-sm text-lime-400 text-glow-lime font-medium">
-                        • Selected: {selectedCards.length}/5
-                      </span>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-heading font-bold text-cyan-300 text-glow-cyan">
+                      Your Hand ({yourHand.length} cards)
+                      {selectedCards.length > 0 && (
+                        <span className="ml-2 text-sm text-lime-400 text-glow-lime font-medium">
+                          • Selected: {selectedCards.length}/5
+                        </span>
+                      )}
+                    </h3>
+                    {handOrder.length > 0 && (
+                      <Button
+                        onClick={() => setHandOrder([])}
+                        variant="secondary"
+                        size="sm"
+                        title="Sort cards by rank and suit"
+                      >
+                        Sort
+                      </Button>
                     )}
-                  </h3>
+                  </div>
                   <div className="flex flex-wrap gap-3 justify-center">
-                    {yourHand.map((card, idx) => {
+                    {(() => {
+                      // If user has custom order, use it; otherwise show sorted cards
+                      if (handOrder.length > 0 && handOrder.length === yourHand.length) {
+                        // User's custom arrangement
+                        return handOrder.map((originalIdx) => yourHand[originalIdx]).filter(Boolean)
+                      } else {
+                        // Default sorted order
+                        return sortCards(yourHand)
+                      }
+                    })().map((card, displayIdx) => {
                       const isSelected = selectedCards.some(
-                        (c) => c.rank === card.rank && c.suit === card.suit
+                        (c) => cardsEqual(c, card)
                       )
+                      const originalIdx = yourHand.findIndex((c) => cardsEqual(c, card))
+                      
                       return (
-                        <PlayingCard
-                          key={idx}
-                          card={card}
-                          isSelected={isSelected}
-                          onClick={() => handleCardClick(card)}
-                          size="md"
-                        />
+                        <div
+                          key={`${card.rank}-${card.suit}-${originalIdx}`}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('cardIndex', String(originalIdx))
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            e.dataTransfer.dropEffect = 'move'
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            const draggedIndex = parseInt(e.dataTransfer.getData('cardIndex'), 10)
+                            const dropIndex = originalIdx
+                            
+                            if (draggedIndex === dropIndex) return
+                            
+                            setHandOrder((prevOrder) => {
+                              if (prevOrder.length === 0) {
+                                // Initialize order array
+                                return yourHand.map((_, idx) => idx)
+                              }
+                              
+                              const newOrder = [...prevOrder]
+                              const draggedPos = newOrder.indexOf(draggedIndex)
+                              const dropPos = newOrder.indexOf(dropIndex)
+                              
+                              // Remove dragged item
+                              newOrder.splice(draggedPos, 1)
+                              // Insert at new position
+                              newOrder.splice(dropPos, 0, draggedIndex)
+                              
+                              return newOrder
+                            })
+                          }}
+                          className="cursor-move transition-transform duration-200 hover:scale-110"
+                        >
+                          <PlayingCard
+                            card={card}
+                            isSelected={isSelected}
+                            onClick={() => handleCardClick(card)}
+                            size="md"
+                          />
+                        </div>
                       )
                     })}
                   </div>
