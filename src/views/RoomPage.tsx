@@ -453,6 +453,13 @@ export function RoomPage() {
             // Clear any pending play cards (new hand dealt)
             setPendingPlayCards(null)
             pendingPlayCardsRef.current = null
+            // Clear last play (new round starts fresh)
+            setLastPlay(null)
+            // Clear passed players (new round)
+            setPassedPlayerIds([])
+            // Clear current turn (will be set by GAME_STATE)
+            setCurrentTurnPlayerId(null)
+
             if (message.yourHand && Array.isArray(message.yourHand)) {
               // Normalize cards to handle various formats (numeric, symbol, or canonical)
               const normalizedHand = message.yourHand.map((card: unknown) => normalizeCard(card))
@@ -469,6 +476,20 @@ export function RoomPage() {
             }
             if (message.seatedPlayerIds && Array.isArray(message.seatedPlayerIds)) {
               setSeatedPlayerIds(message.seatedPlayerIds)
+              // Initialize handsCount for all seated players (13 cards each at start of round)
+              const newHandsCount: Record<string, number> = {}
+              message.seatedPlayerIds.forEach((playerId: string) => {
+                newHandsCount[playerId] = 13
+              })
+              setHandsCount(newHandsCount)
+            }
+            // Also update handsCount if provided in message
+            if (message.handsCount && typeof message.handsCount === 'object' && message.handsCount !== null) {
+              const handsCountMap: Record<string, number> = {}
+              for (const [playerId, count] of Object.entries(message.handsCount)) {
+                handsCountMap[playerId] = typeof count === 'number' ? count : 0
+              }
+              setHandsCount(handsCountMap)
             }
           } else if (message.type === 'GAME_STATE') {
             log('[WS] Received GAME_STATE')
