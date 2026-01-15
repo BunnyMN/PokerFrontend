@@ -53,10 +53,13 @@ VITE_WS_URL=your_websocket_url
 - Verify all environment variables are set
 - Check build logs in Vercel dashboard
 
-### Design Not Loading
-- Ensure Tailwind CSS is properly configured
-- Check that `tailwind.config.js` includes all content paths
-- Verify CSS files are being generated in build
+### Design Not Loading / Looks Different from Local
+- **CSS Code Split**: Changed to `false` in `vite.config.ts` to ensure all CSS is in one file
+- **Tailwind Safelist**: Added comprehensive safelist to ensure all classes are included in production
+- **Build Output**: Check that `dist/assets/css/` contains CSS files
+- **Font Loading**: Verify Google Fonts are loading (check Network tab)
+- **CSS Variables**: Ensure `tokens.css` is being imported in `index.css`
+- **Clear Cache**: Hard refresh (Ctrl+Shift+R / Cmd+Shift+R) after deploy
 
 ### Routing Issues
 - Verify `vercel.json` rewrites are correct

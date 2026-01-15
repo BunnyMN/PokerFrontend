@@ -17,7 +17,7 @@ export default defineConfig({
     target: 'esnext',
     minify: 'esbuild',
     sourcemap: false,
-    cssCodeSplit: true, // Split CSS for better caching
+    cssCodeSplit: false, // Keep CSS in one file to ensure all styles are included
     rollupOptions: {
       output: {
         manualChunks: (id) => {

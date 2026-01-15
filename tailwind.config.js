@@ -4,6 +4,25 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  // Ensure all classes are included in production build
+  safelist: [
+    // Common utility classes
+    { pattern: /^(bg|text|border)-(white|black|gray|cyan|purple|pink|lime|yellow|red|blue)/ },
+    { pattern: /^(w|h)-(12|16|20|24|32|36|full|screen)/ },
+    { pattern: /^text-(xs|sm|base|lg|xl|2xl|3xl)/ },
+    { pattern: /^(p|m|px|py|mx|my|pt|pb|pl|pr|mt|mb|ml|mr)-(0|1|2|3|4|5|6|8|10|12|16|20|24)/ },
+    { pattern: /^(rounded|border|shadow|ring|opacity|scale|translate|rotate|animate)/ },
+    { pattern: /^(flex|grid|block|inline|hidden|absolute|relative|fixed|sticky)/ },
+    { pattern: /^(items|justify|content|self|place)-(start|center|end|between|around|evenly)/ },
+    { pattern: /^(gap|space)-(0|1|2|3|4|5|6|8|10|12|16|20|24)/ },
+    // Custom classes
+    'glass', 'glass-lg', 'glass-glow',
+    'text-glow-cyan', 'text-glow-magenta', 'text-glow-purple', 'text-glow-lime',
+    'border-glow-cyan', 'border-glow-magenta', 'border-glow-purple',
+    'shadow-neon-cyan', 'shadow-neon-magenta', 'shadow-neon-purple', 'shadow-neon-lime',
+    'shadow-glow-cyan', 'shadow-glow-magenta',
+    'animate-pulse-glow', 'animate-flicker', 'animate-float', 'animate-scanline', 'animate-glow-pulse',
+  ],
   theme: {
     extend: {
       colors: {
