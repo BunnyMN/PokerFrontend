@@ -952,13 +952,29 @@ export function RoomPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]) // Only depend on roomId - navigate is stable, but we removed it to be safe
 
-  // Initialize scoreLimit from room data
+  // Initialize scoreLimit from room data and sync to WebSocket server
   useEffect(() => {
     if (room?.score_limit) {
       setScoreLimit(room.score_limit)
       setScoreLimitInput(room.score_limit)
+
+      // Sync score limit to WebSocket server if owner and connected
+      if (
+        currentUserId &&
+        room.owner_id === currentUserId &&
+        room.status === 'lobby' &&
+        wsRef.current?.readyState === WebSocket.OPEN
+      ) {
+        const rulesMessage = {
+          type: 'SET_RULES',
+          roomId: room.id,
+          scoreLimit: room.score_limit,
+        }
+        wsRef.current.send(JSON.stringify(rulesMessage))
+        log('[SET_RULES] Auto-synced score limit to WebSocket server:', room.score_limit)
+      }
     }
-  }, [room?.score_limit])
+  }, [room?.score_limit, room?.owner_id, room?.status, room?.id, currentUserId])
 
   // Fallback polling: check room status every 1s if not connected and room not playing
   useEffect(() => {
@@ -1223,6 +1239,18 @@ export function RoomPage() {
     }
 
     try {
+      // First sync score limit to ensure it's set correctly
+      if (room?.score_limit) {
+        const rulesMessage = {
+          type: 'SET_RULES',
+          roomId,
+          scoreLimit: room.score_limit,
+        }
+        log('[START_GAME] Syncing score limit before start:', room.score_limit)
+        wsRef.current.send(JSON.stringify(rulesMessage))
+      }
+
+      // Then send START_GAME
       const startGameMessage = {
         type: 'START_GAME',
         roomId,
@@ -1235,7 +1263,7 @@ export function RoomPage() {
       setActionError('Failed to start game')
       return false
     }
-  }, [roomId])
+  }, [roomId, room?.score_limit])
 
   const handleCardClick = (card: Card) => {
     // Toggle selection (max 5 cards)
