@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Badge } from './ui/Badge'
 import { cn } from '../utils/cn'
 
@@ -13,7 +14,7 @@ interface SeatCardProps {
   isYou: boolean
 }
 
-export function SeatCard({
+export const SeatCard = memo(function SeatCard({
   playerId,
   playerName,
   playerAvatar,
@@ -154,4 +155,4 @@ export function SeatCard({
       )}
     </div>
   )
-}
+})

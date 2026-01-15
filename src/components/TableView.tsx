@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import { SeatCard } from './SeatCard'
 import { PlayingCard } from './PlayingCard'
 import { normalizeCard } from '../types/cards'
@@ -15,7 +16,7 @@ interface TableViewProps {
   playerAvatars?: Record<string, string | null>
 }
 
-export function TableView({
+export const TableView = memo(function TableView({
   seatedPlayerIds,
   handsCount,
   totalScores,
@@ -35,13 +36,17 @@ export function TableView({
   const centerY = 250
   const radius = 200
 
-  const getSeatPosition = (index: number, total: number) => {
-    // Start from top (270 degrees) and distribute evenly
-    const angle = (270 + (index * 360) / total) * (Math.PI / 180)
-    const x = centerX + radius * Math.cos(angle)
-    const y = centerY + radius * Math.sin(angle)
-    return { x, y, angle: angle * (180 / Math.PI) }
-  }
+  // Memoize seat positions calculation
+  const seatPositions = useMemo(() => {
+    return seatedPlayerIds.map((_, index) => {
+      const angle = (270 + (index * 360) / numSeats) * (Math.PI / 180)
+      const x = centerX + radius * Math.cos(angle)
+      const y = centerY + radius * Math.sin(angle)
+      return { x, y, angle: angle * (180 / Math.PI) }
+    })
+  }, [seatedPlayerIds, numSeats])
+
+  const getSeatPosition = (index: number) => seatPositions[index]
 
   return (
     <div className="flex justify-center items-center p-6 min-h-[600px] relative">
@@ -145,4 +150,4 @@ export function TableView({
       </div>
     </div>
   )
-}
+})

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { cn } from '../utils/cn'
 import type { Card } from '../types/cards'
 import { suitToSymbol } from '../types/cards'
@@ -19,7 +20,7 @@ const suitColors: Record<string, string> = {
   D: 'text-red-600', // Diamonds - Red
 }
 
-export function PlayingCard({
+export const PlayingCard = memo(function PlayingCard({
   card,
   isSelected = false,
   onClick,
@@ -101,4 +102,4 @@ export function PlayingCard({
       </div>
     </div>
   )
-}
+})
