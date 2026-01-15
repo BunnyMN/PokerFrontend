@@ -2,6 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  // Ensure CSS is properly handled in production
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
+  // Ensure all CSS is included in production build
+  productionBrowserSourceMaps: false,
+  // Optimize CSS output
+  optimizeFonts: true,
   experimental: {
     optimizePackageImports: ['@tanstack/react-query'],
   },
