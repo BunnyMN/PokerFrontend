@@ -604,6 +604,25 @@ export function RoomPage() {
               shouldReconnectRef.current = false
               toast.success(`Game Over! Winner: ${getPlayerDisplayName(message.winnerPlayerId)}`)
             }
+          } else if (message.type === 'PLAYER_LEFT') {
+            log('[WS] Received PLAYER_LEFT')
+            if (message.playerId && typeof message.playerId === 'string') {
+              const leftPlayerId = message.playerId
+              // Remove from players list
+              setPlayers(prev => prev.filter(p => p.player_id !== leftPlayerId))
+              // Remove from roomStatePlayers
+              setRoomStatePlayers(prev => prev.filter(p => p.playerId !== leftPlayerId))
+              // Remove from seatedPlayerIds
+              setSeatedPlayerIds(prev => prev.filter(id => id !== leftPlayerId))
+              // Remove from handsCount
+              setHandsCount(prev => {
+                const newHandsCount = { ...prev }
+                delete newHandsCount[leftPlayerId]
+                return newHandsCount
+              })
+              // Show toast notification
+              toast.info(`${getPlayerDisplayName(leftPlayerId)} left the room`)
+            }
           } else if (message.type === 'WS_ERROR' || message.type === 'PARSE_ERROR') {
             const errorMsg = typeof message.error === 'string' 
               ? message.error 
