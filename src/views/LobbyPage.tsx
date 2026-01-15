@@ -545,6 +545,7 @@ export function LobbyPage() {
                 <div className="space-y-3">
                   {filteredRooms.map((room) => {
                     const isJoinable = room.status === 'lobby'
+                    const isFinished = room.status === 'finished'
                     return (
                       <div
                         key={room.id}
@@ -552,7 +553,8 @@ export function LobbyPage() {
                           'flex items-center gap-5 p-5 rounded-xl border border-white/10',
                           'hover:bg-white/5 hover:border-cyan-400/30 hover:shadow-neon-cyan/20',
                           'transition-all duration-300 group cursor-pointer',
-                          'backdrop-blur-sm'
+                          'backdrop-blur-sm',
+                          isFinished && 'opacity-60'
                         )}
                       >
                         {/* Left: Icon + Room Code */}
@@ -572,12 +574,12 @@ export function LobbyPage() {
 
                         {/* Middle: Status + Info */}
                         <div className="flex-1 min-w-0 flex items-center gap-4 flex-wrap">
-                          <Badge 
-                            variant={room.status === 'playing' ? 'success' : 'info'}
+                          <Badge
+                            variant={room.status === 'playing' ? 'success' : room.status === 'finished' ? 'danger' : 'info'}
                             size="sm"
                             className="font-semibold"
                           >
-                            {room.status === 'lobby' ? 'WAITING' : 'PLAYING'}
+                            {room.status === 'lobby' ? 'WAITING' : room.status === 'finished' ? 'FINISHED' : 'PLAYING'}
                           </Badge>
                           <div className="flex items-center gap-1.5 text-xs text-cyan-400/70">
                             <PeopleIcon className="w-3.5 h-3.5" />
@@ -596,10 +598,10 @@ export function LobbyPage() {
                           variant={isJoinable ? 'primary' : 'secondary'}
                           size="sm"
                           onClick={() => handleJoinRoomById(room.id)}
-                          disabled={!isJoinable}
+                          disabled={!isJoinable || isFinished}
                           className="flex-shrink-0 min-w-[100px]"
                         >
-                          {isJoinable ? 'Join' : 'Playing'}
+                          {isFinished ? 'Finished' : isJoinable ? 'Join' : 'Playing'}
                         </Button>
                       </div>
                     )
