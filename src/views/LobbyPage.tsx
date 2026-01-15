@@ -47,14 +47,14 @@ export function LobbyPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUserEmail(user.email || null)
-        
+
         // Fetch profile to get display_name (profile should exist after login)
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('display_name')
           .eq('id', user.id)
           .single()
-        
+
         if (profile) {
           setDisplayName(profile.display_name)
         } else if (profileError && profileError.code === 'PGRST116') {
@@ -66,7 +66,7 @@ export function LobbyPage() {
               id: user.id,
               display_name: emailUsername,
             })
-          
+
           if (!insertError) {
             setDisplayName(emailUsername)
           } else if (insertError.code !== '23505') {
@@ -114,6 +114,53 @@ export function LobbyPage() {
 
     fetchUser()
     fetchRecentRooms()
+
+    // Subscribe to realtime room changes (status updates)
+    const roomsChannel = supabase
+      .channel('lobby-rooms')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms',
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            // Update the room in the list when status changes
+            const updatedRoom = payload.new as Room
+            setRecentRooms((prev) =>
+              prev.map((room) =>
+                room.id === updatedRoom.id
+                  ? { ...room, ...updatedRoom }
+                  : room
+              )
+            )
+          } else if (payload.eventType === 'INSERT') {
+            // Add new room to the list
+            const newRoom = payload.new as Room
+            setRecentRooms((prev) => {
+              // Check if room already exists
+              if (prev.some((r) => r.id === newRoom.id)) {
+                return prev
+              }
+              return [{ ...newRoom, player_count: 0 }, ...prev].slice(0, 20)
+            })
+          } else if (payload.eventType === 'DELETE') {
+            // Remove deleted room from the list
+            const deletedRoom = payload.old as Room
+            setRecentRooms((prev) =>
+              prev.filter((room) => room.id !== deletedRoom.id)
+            )
+          }
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(roomsChannel)
+    }
   }, [])
 
   const handleCreateRoom = async (e: React.FormEvent) => {
