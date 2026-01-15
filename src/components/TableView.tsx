@@ -11,6 +11,8 @@ interface TableViewProps {
   eliminated: string[]
   currentUserId: string | null
   lastPlay: {playerId: string, cards: any[], kind?: string, fiveKind?: string} | null
+  playerNames?: Record<string, string>
+  playerAvatars?: Record<string, string | null>
 }
 
 export function TableView({
@@ -22,6 +24,8 @@ export function TableView({
   eliminated,
   currentUserId,
   lastPlay,
+  playerNames,
+  playerAvatars,
 }: TableViewProps) {
   const numSeats = seatedPlayerIds.length
   if (numSeats === 0) return null
@@ -126,6 +130,8 @@ export function TableView({
             >
               <SeatCard
                 playerId={playerId}
+                playerName={playerNames?.[playerId]}
+                playerAvatar={playerAvatars?.[playerId] || null}
                 cardsLeft={handsCount[playerId] || 0}
                 totalScore={totalScores[playerId] || 0}
                 scoreLimit={scoreLimit}

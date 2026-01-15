@@ -29,6 +29,7 @@ type RoomStatusFilter = 'all' | 'lobby' | 'playing'
 
 export function LobbyPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState<string | null>(null)
   const [createScoreLimit, setCreateScoreLimit] = useState(60)
   const [joinCode, setJoinCode] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -44,6 +45,34 @@ export function LobbyPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUserEmail(user.email || null)
+        
+        // Fetch profile to get display_name (profile should exist after login)
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .single()
+        
+        if (profile) {
+          setDisplayName(profile.display_name)
+        } else if (profileError && profileError.code === 'PGRST116') {
+          // Profile doesn't exist - create it with email username
+          const emailUsername = user.email?.split('@')[0] || null
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              display_name: emailUsername,
+            })
+          
+          if (!insertError) {
+            setDisplayName(emailUsername)
+          } else if (insertError.code !== '23505') {
+            console.warn('Failed to create profile:', insertError)
+          }
+        } else if (profileError) {
+          console.warn('Failed to fetch profile:', profileError)
+        }
       }
     }
 
@@ -314,20 +343,30 @@ export function LobbyPage() {
               <h1 className="text-2xl sm:text-3xl font-heading font-bold text-cyan-300 text-glow-cyan">
                 Game Lobby
               </h1>
-              {userEmail && (
+              {(displayName || userEmail) && (
                 <p className="text-xs sm:text-sm text-cyan-400/70 font-medium">
-                  Welcome, <span className="text-cyan-300">{userEmail}</span>
+                  Welcome, <span className="text-cyan-300">{displayName || userEmail}</span>
                 </p>
               )}
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleSignOut}
-              className="border border-white/10 hover:bg-white/5 hover:border-cyan-400/30"
-            >
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/profile')}
+                className="border border-white/10 hover:bg-white/5 hover:border-cyan-400/30"
+              >
+                Profile
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleSignOut}
+                className="border border-white/10 hover:bg-white/5 hover:border-cyan-400/30"
+              >
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>

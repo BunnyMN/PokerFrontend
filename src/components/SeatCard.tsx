@@ -3,6 +3,8 @@ import { cn } from '../utils/cn'
 
 interface SeatCardProps {
   playerId: string
+  playerName?: string
+  playerAvatar?: string | null
   cardsLeft: number
   totalScore: number
   scoreLimit: number
@@ -13,6 +15,8 @@ interface SeatCardProps {
 
 export function SeatCard({
   playerId,
+  playerName,
+  playerAvatar,
   cardsLeft,
   totalScore,
   scoreLimit,
@@ -21,6 +25,8 @@ export function SeatCard({
   isYou,
 }: SeatCardProps) {
   const shortId = playerId.length > 8 ? playerId.substring(0, 8) + '...' : playerId
+  const displayName = playerName || shortId
+  const initial = displayName.trim().charAt(0).toUpperCase() || '?'
   const scorePercentage = (totalScore / scoreLimit) * 100
 
   return (
@@ -39,7 +45,7 @@ export function SeatCard({
       {/* Holographic avatar frame */}
       <div className="relative mb-3">
         <div className={cn(
-          'w-16 h-16 mx-auto rounded-full border-2 flex items-center justify-center',
+          'w-16 h-16 mx-auto rounded-full border-2 flex items-center justify-center overflow-hidden',
           'glass-lg',
           isCurrentTurn 
             ? 'border-cyan-400 shadow-glow-cyan' 
@@ -48,14 +54,31 @@ export function SeatCard({
             : 'border-cyan-500/40',
           isEliminated && 'border-pink-500/50'
         )}>
-          {/* Avatar placeholder - first letter of player ID */}
-          <div className={cn(
-            'text-2xl font-bold font-heading',
-            isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400',
-            isEliminated && 'text-pink-400'
-          )}>
-            {shortId.charAt(0).toUpperCase()}
-          </div>
+          {playerAvatar ? (
+            <img 
+              src={playerAvatar} 
+              alt={displayName}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to initials if image fails to load
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  parent.innerHTML = `<div class="w-full h-full flex items-center justify-center ${isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400'} ${isEliminated ? 'text-pink-400' : ''} text-2xl font-bold font-heading">${initial}</div>`
+                }
+              }}
+            />
+          ) : (
+            /* Avatar placeholder - first letter of display name */
+            <div className={cn(
+              'text-2xl font-bold font-heading',
+              isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400',
+              isEliminated && 'text-pink-400'
+            )}>
+              {initial}
+            </div>
+          )}
           
           {/* Pulsing ring for current turn */}
           {isCurrentTurn && (
@@ -71,7 +94,7 @@ export function SeatCard({
           isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-white',
           isEliminated && 'text-pink-400'
         )}>
-          {shortId}
+          {displayName}
         </div>
         {isYou && (
           <span className="ml-1 text-xs text-lime-400 text-glow-lime font-medium">(YOU)</span>

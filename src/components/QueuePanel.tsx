@@ -10,6 +10,7 @@ interface QueuePanelProps {
   scoreLimit: number
   currentTurnPlayerId: string | null
   eliminated: string[]
+  playerNames?: Record<string, string>
 }
 
 export function QueuePanel({
@@ -20,8 +21,10 @@ export function QueuePanel({
   scoreLimit,
   currentTurnPlayerId,
   eliminated,
+  playerNames,
 }: QueuePanelProps) {
   const shortId = (id: string) => id.length > 6 ? id.substring(0, 6) + '...' : id
+  const getDisplayName = (id: string) => playerNames?.[id] || shortId(id)
 
   return (
     <Card className="w-full max-w-sm">
@@ -45,7 +48,7 @@ export function QueuePanel({
                     {index + 1}.
                   </span>
                   <span className="flex-1 text-sm text-[var(--text)] font-medium">
-                    {shortId(playerId)}
+                    {getDisplayName(playerId)}
                   </span>
                   <span className="text-xs text-[var(--text-muted)]">
                     {totalScores[playerId] || 0} / {scoreLimit}
@@ -84,9 +87,9 @@ export function QueuePanel({
                     eliminated.includes(playerId) && 'opacity-60 bg-[var(--danger-bg)]'
                   )}
                 >
-                  <div className="text-sm text-[var(--text)] font-medium truncate">
-                    {shortId(playerId)}
-                  </div>
+                    <div className="text-sm text-[var(--text)] font-medium truncate">
+                      {getDisplayName(playerId)}
+                    </div>
                   <div className="text-sm text-[var(--text-muted)]">
                     {handsCount[playerId] || 0}
                   </div>

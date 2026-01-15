@@ -7,6 +7,7 @@ import { Skeleton } from './shared/components/ui/Skeleton'
 const AuthPage = lazy(() => import('./features/auth/components/AuthPage').then(m => ({ default: m.AuthPage })))
 const LobbyPage = lazy(() => import('./pages/LobbyPage').then(m => ({ default: m.LobbyPage })))
 const RoomPage = lazy(() => import('./pages/RoomPage').then(m => ({ default: m.RoomPage })))
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
 
 function LoadingFallback() {
   return (
@@ -45,6 +46,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <RoomPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />

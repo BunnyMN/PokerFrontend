@@ -20,5 +20,6 @@ export interface Profile {
   id: string
   display_name: string | null
   email: string
+  avatar_url: string | null
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { connectGameSocketDebug, type GameSocketMessage, type WSEventLog } from '../lib/gameSocket'
@@ -77,6 +77,39 @@ export function RoomPage() {
   const [scoreLimitInput, setScoreLimitInput] = useState<number>(60)
   const [totalScores, setTotalScores] = useState<Record<string, number>>({})
   const [eliminated, setEliminated] = useState<string[]>([])
+
+  // Helper function to get display name for a player
+  const getPlayerDisplayName = useCallback((playerId: string): string => {
+    const player = players.find(p => p.player_id === playerId)
+    if (player?.profile?.display_name) {
+      return player.profile.display_name
+    }
+    // Fallback to short ID if no display_name
+    return playerId.length > 8 ? `${playerId.substring(0, 8)}...` : playerId
+  }, [players])
+
+  // Create player name map for passing to components
+  const playerNameMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    players.forEach((p) => {
+      const name = p.profile?.display_name || ''
+      if (name) {
+        map[p.player_id] = name
+      }
+    })
+    return map
+  }, [players])
+
+  // Create player avatar map for passing to components
+  const playerAvatarMap = useMemo(() => {
+    const map: Record<string, string | null> = {}
+    players.forEach((p) => {
+      if (p.profile?.avatar_url) {
+        map[p.player_id] = p.profile.avatar_url
+      }
+    })
+    return map
+  }, [players])
 
   // Auto-connect function: connects to WS if room status is "playing"
   const connectIfPlaying = useCallback(async (roomStatus: string, roomIdToConnect: string) => {
@@ -303,6 +336,58 @@ export function RoomPage() {
             log('[WS] Received ROOM_STATE')
             if (message.players && Array.isArray(message.players)) {
               setRoomStatePlayers(message.players)
+              // Fetch profiles for any new players that don't have profiles yet
+              // Use functional update to access current players state
+              setPlayers(currentPlayers => {
+                const newPlayerIds = message.players.map((p: any) => p.playerId)
+                const existingPlayerIds = new Set(currentPlayers.map(p => p.player_id))
+                const missingPlayerIds = newPlayerIds.filter((id: string) => !existingPlayerIds.has(id))
+                
+                if (missingPlayerIds.length > 0 && roomId) {
+                  // Fetch profiles for missing players asynchronously
+                  Promise.all(
+                    missingPlayerIds.map(async (playerId: string) => {
+                      try {
+                        const { data: profile } = await supabase
+                          .from('profiles')
+                          .select('id, display_name, avatar_url')
+                          .eq('id', playerId)
+                          .single()
+                        
+                        // Update players state with new profile
+                        if (profile) {
+                          setPlayers(prev => {
+                            const existing = prev.find(p => p.player_id === playerId)
+                            if (existing) {
+                              return prev.map(p => 
+                                p.player_id === playerId 
+                                  ? { ...p, profile: profile as Profile }
+                                  : p
+                              )
+                            }
+                            // If player doesn't exist in players list, add them
+                            return [...prev, {
+                              player_id: playerId,
+                              room_id: roomId,
+                              is_ready: message.players.find((p: any) => p.playerId === playerId)?.isReady || false,
+                              left_at: null,
+                              joined_at: new Date().toISOString(),
+                              id: '', // Will be set by Supabase
+                              profile: profile as Profile,
+                            } as PlayerWithProfile]
+                          })
+                        }
+                      } catch (err) {
+                        warn(`Failed to fetch profile for player ${playerId}:`, err)
+                      }
+                    })
+                  ).catch(err => {
+                    warn('Failed to fetch profiles for new players:', err)
+                  })
+                }
+                
+                return currentPlayers // Return current state, updates will happen via setPlayers in Promise
+              })
             }
           } else if (message.type === 'ROUND_START') {
             log('[WS] Received ROUND_START')
@@ -769,7 +854,7 @@ export function RoomPage() {
         playersData.map(async (player) => {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, display_name, avatar_url')
             .eq('id', player.player_id)
             .single()
 
@@ -1372,16 +1457,29 @@ export function RoomPage() {
           }>
             <div className="space-y-3">
               {(() => {
-                // Use ROOM_STATE players if available, otherwise fallback to Supabase players
-                const playersToRender = roomStatePlayers.length > 0
-                  ? roomStatePlayers.map(p => ({
-                      playerId: p.playerId,
-                      isReady: p.isReady,
-                    }))
-                  : players.map(p => ({
-                      playerId: p.player_id,
-                      isReady: p.is_ready,
-                    }))
+                // Always use players state (which has profiles) as source of truth for display
+                // Merge ready status from roomStatePlayers if available
+                const playersToRender = players.map(p => {
+                  const roomStatePlayer = roomStatePlayers.find(rsp => rsp.playerId === p.player_id)
+                  return {
+                    playerId: p.player_id,
+                    isReady: roomStatePlayer?.isReady ?? p.is_ready,
+                    displayName: p.profile?.display_name || null,
+                  }
+                })
+
+                // If roomStatePlayers has players not in players list, add them (will show ID until profile loads)
+                if (roomStatePlayers.length > 0) {
+                  roomStatePlayers.forEach(rsp => {
+                    if (!playersToRender.find(p => p.playerId === rsp.playerId)) {
+                      playersToRender.push({
+                        playerId: rsp.playerId,
+                        isReady: rsp.isReady,
+                        displayName: null,
+                      })
+                    }
+                  })
+                }
 
                 if (playersToRender.length === 0) {
                   return <p className="text-center text-[var(--text-muted)] py-8">No players in room</p>
@@ -1391,6 +1489,8 @@ export function RoomPage() {
                   const isCurrentPlayer = player.playerId === currentUserId
                   const hasPassed = passedPlayerIds.includes(player.playerId)
                   const isCurrentTurn = player.playerId === currentTurnPlayerId
+                  // Use displayName if available, otherwise fallback to getPlayerDisplayName
+                  const displayName = player.displayName || getPlayerDisplayName(player.playerId)
 
                   return (
                     <div
@@ -1403,7 +1503,9 @@ export function RoomPage() {
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="font-medium text-[var(--text)]">{player.playerId}</span>
+                        <span className="font-medium text-[var(--text)]">
+                          {displayName}
+                        </span>
                         {isOwner && player.playerId === room.owner_id && (
                           <Badge variant="warning" size="sm">Owner</Badge>
                         )}
@@ -1529,6 +1631,8 @@ export function RoomPage() {
                   eliminated={eliminated}
                   currentUserId={currentUserId}
                   lastPlay={lastPlay}
+                  playerNames={playerNameMap}
+                  playerAvatars={playerAvatarMap}
                 />
               </div>
 
@@ -1542,6 +1646,7 @@ export function RoomPage() {
                   scoreLimit={scoreLimit}
                   currentTurnPlayerId={currentTurnPlayerId}
                   eliminated={eliminated}
+                  playerNames={playerNameMap}
                 />
               </div>
             </div>
