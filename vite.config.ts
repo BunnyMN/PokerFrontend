@@ -17,7 +17,6 @@ export default defineConfig({
     target: 'esnext',
     minify: 'esbuild',
     sourcemap: false,
-    cssMinify: 'esbuild', // Ensure CSS is properly minified
     rollupOptions: {
       output: {
         manualChunks: {
@@ -25,13 +24,6 @@ export default defineConfig({
           'supabase-vendor': ['@supabase/supabase-js'],
           'query-vendor': ['@tanstack/react-query'],
           'form-vendor': ['react-hook-form', '@hookform/resolvers'],
-        },
-        assetFileNames: (assetInfo) => {
-          // Ensure CSS files are properly named
-          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
-            return 'assets/[name]-[hash][extname]'
-          }
-          return 'assets/[name]-[hash][extname]'
         },
       },
     },
