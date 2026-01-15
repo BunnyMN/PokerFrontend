@@ -623,6 +623,12 @@ export function RoomPage() {
               // Show toast notification
               toast.info(`${getPlayerDisplayName(leftPlayerId)} left the room`)
             }
+          } else if (message.type === 'PLAYER_JOINED') {
+            log('[WS] Received PLAYER_JOINED')
+            if (message.playerId && typeof message.playerId === 'string') {
+              // Show toast notification - ROOM_STATE will update the player list
+              toast.info(`New player joined!`)
+            }
           } else if (message.type === 'WS_ERROR' || message.type === 'PARSE_ERROR') {
             const errorMsg = typeof message.error === 'string' 
               ? message.error 
@@ -1210,6 +1216,27 @@ export function RoomPage() {
     }
   }, [roomId])
 
+  const sendStartGameMessage = useCallback(() => {
+    if (!roomId || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      warn('[START_GAME] Cannot send START_GAME: WS not connected')
+      return false
+    }
+
+    try {
+      const startGameMessage = {
+        type: 'START_GAME',
+        roomId,
+      }
+      log('[START_GAME] Sending START_GAME message')
+      wsRef.current.send(JSON.stringify(startGameMessage))
+      return true
+    } catch (err) {
+      logError('[START_GAME] Failed to send START_GAME message:', err)
+      setActionError('Failed to start game')
+      return false
+    }
+  }, [roomId])
+
   const handleCardClick = (card: Card) => {
     // Toggle selection (max 5 cards)
     setSelectedCards((prev) => {
@@ -1742,12 +1769,38 @@ export function RoomPage() {
                   ? 'Connect first'
                   : roundStart
                   ? 'Round started'
-                  : currentReady 
-                  ? 'Mark Not Ready' 
+                  : currentReady
+                  ? 'Mark Not Ready'
                   : 'Mark Ready'}
               </Button>
             )
           })()}
+
+          {/* Start Game Button (Owner only) */}
+          {isOwner && room.status !== 'playing' && !roundStart && (
+            (() => {
+              const allReady = roomStatePlayers.length >= 2 && roomStatePlayers.every(p => p.isReady)
+              return (
+                <Button
+                  onClick={() => sendStartGameMessage()}
+                  variant="success"
+                  disabled={!allReady || wsStatus !== 'connected'}
+                  title={
+                    wsStatus !== 'connected'
+                      ? 'Connect first'
+                      : roomStatePlayers.length < 2
+                      ? 'Need at least 2 players'
+                      : !allReady
+                      ? 'All players must be ready'
+                      : 'Start the game!'
+                  }
+                  className="px-6"
+                >
+                  Start Game
+                </Button>
+              )
+            })()
+          )}
 
           {/* Owner Rules Setting */}
           {isOwner && room.status !== 'playing' && !roundStart && (
