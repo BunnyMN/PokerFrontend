@@ -79,6 +79,7 @@ export function RoomPage() {
   const [_canPass, setCanPass] = useState<boolean>(false) // Legacy, kept for backward compatibility (server may still send it, but PASS button uses lastPlay instead)
   const [passedPlayerIds, setPassedPlayerIds] = useState<string[]>([])
   const [roundEnd, setRoundEnd] = useState<{winnerPlayerId: string} | null>(null)
+  const [gameEnd, setGameEnd] = useState<{winnerPlayerId: string, totalScores: Record<string, number>} | null>(null)
   
   // Rules and scoring
   const [scoreLimit, setScoreLimit] = useState<number>(60)
@@ -589,6 +590,19 @@ export function RoomPage() {
             log('[WS] Received ROUND_END')
             if (message.winnerPlayerId && typeof message.winnerPlayerId === 'string') {
               setRoundEnd({ winnerPlayerId: message.winnerPlayerId })
+            }
+          } else if (message.type === 'GAME_END') {
+            log('[WS] Received GAME_END')
+            if (message.winnerPlayerId && typeof message.winnerPlayerId === 'string') {
+              const totalScores = message.totalScores && typeof message.totalScores === 'object'
+                ? message.totalScores as Record<string, number>
+                : {}
+              setGameEnd({ winnerPlayerId: message.winnerPlayerId, totalScores })
+              // Update room status locally
+              setRoom(prevRoom => prevRoom ? { ...prevRoom, status: 'finished' } : null)
+              // Stop reconnection attempts
+              shouldReconnectRef.current = false
+              toast.success(`Game Over! Winner: ${getPlayerDisplayName(message.winnerPlayerId)}`)
             }
           } else if (message.type === 'WS_ERROR' || message.type === 'PARSE_ERROR') {
             const errorMsg = typeof message.error === 'string' 
@@ -1759,12 +1773,39 @@ export function RoomPage() {
         </div>
 
         {/* Game Area - Poker-style Table UI */}
-        {yourHand && room?.status === 'playing' && (
+        {yourHand && (room?.status === 'playing' || room?.status === 'finished') && (
           <div className="space-y-6">
+            {/* Game End Banner */}
+            {gameEnd && (
+              <div className="p-6 bg-gradient-to-r from-[var(--neon-purple)] to-[var(--neon-magenta)] text-white rounded-lg shadow-lg text-center space-y-4">
+                <h2 className="text-2xl font-heading font-bold text-glow-cyan">GAME OVER!</h2>
+                <p className="text-xl">
+                  Winner: <span className="font-bold text-[var(--neon-lime)]">{getPlayerDisplayName(gameEnd.winnerPlayerId)}</span>
+                </p>
+                <div className="mt-4">
+                  <h3 className="text-lg font-semibold mb-2">Final Scores:</h3>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {Object.entries(gameEnd.totalScores).map(([playerId, score]) => (
+                      <div key={playerId} className={cn(
+                        "px-4 py-2 rounded-lg",
+                        playerId === gameEnd.winnerPlayerId ? "bg-[var(--neon-lime)]/20 border border-[var(--neon-lime)]" : "bg-white/10"
+                      )}>
+                        <span className="font-medium">{getPlayerDisplayName(playerId)}</span>
+                        <span className="ml-2 font-bold">{score}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Button onClick={() => navigate('/lobby')} variant="primary" className="mt-4">
+                  Back to Lobby
+                </Button>
+              </div>
+            )}
+
             {/* Round End Banner */}
-            {roundEnd && (
+            {roundEnd && !gameEnd && (
               <div className="p-4 bg-[var(--success)] text-white rounded-lg shadow-md text-center">
-                <strong className="text-lg">Round ended. Winner: {roundEnd.winnerPlayerId}</strong>
+                <strong className="text-lg">Round ended. Winner: {getPlayerDisplayName(roundEnd.winnerPlayerId)}</strong>
               </div>
             )}
 
@@ -1900,7 +1941,7 @@ export function RoomPage() {
                 </div>
 
                 {/* Play/Pass Buttons */}
-                {!roundEnd && (
+                {!roundEnd && !gameEnd && (
                   <div className="flex gap-4 justify-center pt-2">
                     <Button
                       onClick={handlePlay}
