@@ -2,7 +2,7 @@
 
 A multiplayer game lobby web application built with React, TypeScript, Vite, and Supabase.
 
-## Features
+## Featuress
 
 - **Authentication**: Sign up and sign in with email/password
 - **Lobby**: Create and join game rooms
