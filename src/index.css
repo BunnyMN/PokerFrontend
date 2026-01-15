@@ -77,10 +77,30 @@
 @import './styles/spacing.css';
 
 /* Base Styles */
-* {
-  margin: 0;
-  padding: 0;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+/* Form elements spacing */
+input,
+textarea,
+select,
+button {
+  margin: 5px 0;
+}
+
+/* List and row spacing */
+li,
+.row,
+.list-item {
+  margin: 5px 0;
+}
+
+/* Flex/Grid gap helper for consistent spacing */
+.gap-row {
+  gap: 5px;
 }
 
 html {
