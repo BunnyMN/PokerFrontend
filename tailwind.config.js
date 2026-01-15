@@ -4,6 +4,31 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  // Ensure all classes are included in production build
+  safelist: [
+    // Card sizes
+    'w-12', 'h-16', 'w-16', 'h-24', 'w-20', 'h-32',
+    // Text sizes
+    'text-xs', 'text-sm', 'text-base', 'text-xl', 'text-2xl',
+    // Colors
+    'text-black', 'text-red-600',
+    'bg-white',
+    // Borders
+    'border-2', 'border-gray-300', 'border-gray-400', 'border-blue-500',
+    // Effects
+    'ring-2', 'ring-blue-400/50', 'shadow-xl',
+    // Transforms
+    'scale-110', '-translate-y-2', '-translate-x-1/2', '-translate-y-1/2',
+    'hover:scale-110', 'hover:-translate-y-2', 'hover:border-gray-400', 'hover:shadow-xl',
+    // Layout
+    'relative', 'absolute', 'inset-0', 'p-2', 'flex', 'flex-col', 'justify-between',
+    'items-center', 'justify-center', 'top-1/2', 'left-1/2',
+    // Typography
+    'font-bold', 'leading-tight', 'self-end', 'rotate-180',
+    // Utilities
+    'rounded-lg', 'cursor-pointer', 'cursor-move', 'transition-all', 'duration-300',
+    'opacity-10', 'opacity-50', 'opacity-100',
+  ],
   theme: {
     extend: {
       colors: {
