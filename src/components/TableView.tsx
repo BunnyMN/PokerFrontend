@@ -1,3 +1,5 @@
+'use client'
+
 import { memo, useMemo } from 'react'
 import { SeatCard } from './SeatCard'
 import { PlayingCard } from './PlayingCard'

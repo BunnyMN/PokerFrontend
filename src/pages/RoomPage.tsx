@@ -1,5 +1,7 @@
+'use client'
+
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from '../lib/navigation'
 import { supabase } from '../lib/supabase'
 import { connectGameSocketDebug, type GameSocketMessage, type WSEventLog } from '../lib/gameSocket'
 import { log, warn, error as logError } from '../lib/logger'
@@ -18,7 +20,7 @@ import { toast } from '../components/ui/Toast'
 import { Skeleton } from '../components/ui/Skeleton'
 import { cn } from '../utils/cn'
 
-const isDev = import.meta.env.DEV
+const isDev = process.env.NODE_ENV === 'development'
 
 interface PlayerWithProfile extends RoomPlayer {
   profile: Profile | null
@@ -46,6 +48,9 @@ export function RoomPage() {
   const [wsUrl, setWsUrl] = useState<string>('')
   const shouldReconnectRef = useRef<boolean>(true) // Control reconnection
   const reconnectAttemptRef = useRef<number>(0)
+  const roomChannelRef = useRef<any>(null) // Track room channel to prevent duplicate subscriptions
+  const playersChannelRef = useRef<any>(null) // Track players channel to prevent duplicate subscriptions
+  const isSettingUpChannelsRef = useRef<boolean>(false) // Prevent concurrent channel setup
   
   // Game state from WS
   const [roomStatePlayers, setRoomStatePlayers] = useState<Array<{playerId: string, isReady: boolean}>>([])
@@ -168,7 +173,7 @@ export function RoomPage() {
       setWsError(null)
 
       // Get WS URL for display
-      const wsUrlEnv = (import.meta.env as { VITE_GAME_SERVER_WS_URL?: string }).VITE_GAME_SERVER_WS_URL || 'not set'
+      const wsUrlEnv = process.env.NEXT_PUBLIC_GAME_SERVER_WS_URL || process.env.VITE_GAME_SERVER_WS_URL || 'not set'
       setWsUrl(wsUrlEnv)
 
       const ws = connectGameSocketDebug(
@@ -648,6 +653,42 @@ export function RoomPage() {
       return
     }
 
+    // Guard: Don't create channels if setup is already in progress
+    if (isSettingUpChannelsRef.current) {
+      log('[RoomsRT] Channel setup already in progress, skipping')
+      return
+    }
+
+    // Guard: Don't create channels if they already exist and are active
+    const existingRoomChannel = roomChannelRef.current
+    const existingPlayersChannel = playersChannelRef.current
+    
+    if (existingRoomChannel && existingPlayersChannel) {
+      // Check channel state - Supabase channels have a state property
+      const roomChannelState = (existingRoomChannel as any).state
+      const playersChannelState = (existingPlayersChannel as any).state
+      
+      // If channels are still subscribed or joining, don't recreate
+      if (roomChannelState === 'joined' || roomChannelState === 'joining' || 
+          playersChannelState === 'joined' || playersChannelState === 'joining') {
+        log('[RoomsRT] Channels already exist and active, skipping creation')
+        return
+      }
+      
+      // If channels are closed/errored, clean them up first
+      if (roomChannelState === 'closed' || roomChannelState === 'errored' ||
+          playersChannelState === 'closed' || playersChannelState === 'errored') {
+        log('[RoomsRT] Cleaning up closed/errored channels')
+        supabase.removeChannel(existingRoomChannel)
+        supabase.removeChannel(existingPlayersChannel)
+        roomChannelRef.current = null
+        playersChannelRef.current = null
+      }
+    }
+
+    // Mark that we're setting up channels
+    isSettingUpChannelsRef.current = true
+
     const fetchData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -672,6 +713,16 @@ export function RoomPage() {
         // Fetch players
         await fetchPlayers(roomId)
 
+        // Clean up existing channels if they exist (prevent duplicates)
+        if (playersChannelRef.current) {
+          supabase.removeChannel(playersChannelRef.current)
+          playersChannelRef.current = null
+        }
+        if (roomChannelRef.current) {
+          supabase.removeChannel(roomChannelRef.current)
+          roomChannelRef.current = null
+        }
+
         // Subscribe to room_players changes
         const channel = supabase
           .channel(`room_players:${roomId}`)
@@ -688,6 +739,7 @@ export function RoomPage() {
             }
           )
           .subscribe()
+        playersChannelRef.current = channel
 
         // Subscribe to room status changes
         const channelName = `room:${roomId}`
@@ -709,7 +761,16 @@ export function RoomPage() {
               log('[RoomsRT] payload received')
               if (payload.new) {
                 const updatedRoom = payload.new as Room
-                setRoom(updatedRoom)
+                // Only update if room actually changed to prevent unnecessary re-renders
+                setRoom(prevRoom => {
+                  if (prevRoom && prevRoom.id === updatedRoom.id && 
+                      prevRoom.status === updatedRoom.status &&
+                      prevRoom.score_limit === updatedRoom.score_limit) {
+                    // Room hasn't meaningfully changed, return previous to prevent re-render
+                    return prevRoom
+                  }
+                  return updatedRoom
+                })
                 
                 // Auto-connect when status becomes "playing" (for ALL users)
                 if (updatedRoom.status === 'playing') {
@@ -725,20 +786,41 @@ export function RoomPage() {
               log('[RoomsRT] Successfully subscribed to room updates')
             } else if (status === 'TIMED_OUT') {
               warn('[RoomsRT] Subscription timed out')
+              // Don't recreate on timeout - let it retry naturally
             } else if (status === 'CHANNEL_ERROR') {
               logError('[RoomsRT] Channel error occurred')
+              // Clear ref so it can be recreated on next effect run
+              if (roomChannelRef.current === roomChannel) {
+                roomChannelRef.current = null
+              }
             } else if (status === 'CLOSED') {
               log('[RoomsRT] Channel closed')
+              // Only clear ref if this is the current channel (not a stale one)
+              // Don't recreate immediately to avoid infinite loop
+              if (roomChannelRef.current === roomChannel) {
+                roomChannelRef.current = null
+              }
             }
           })
+        roomChannelRef.current = roomChannel
 
         // A) After initial room fetch: auto-connect if already "playing"
         log('[AutoConnect] Initial fetch: room.status =', roomData.status)
         connectIfPlaying(roomData.status, roomId)
 
+        // Mark channel setup as complete
+        isSettingUpChannelsRef.current = false
+
         return () => {
-          supabase.removeChannel(channel)
-          supabase.removeChannel(roomChannel)
+          isSettingUpChannelsRef.current = false
+          if (playersChannelRef.current) {
+            supabase.removeChannel(playersChannelRef.current)
+            playersChannelRef.current = null
+          }
+          if (roomChannelRef.current) {
+            supabase.removeChannel(roomChannelRef.current)
+            roomChannelRef.current = null
+          }
           // Close WebSocket on unmount
           if (wsRef.current) {
             wsRef.current.close()
@@ -747,6 +829,7 @@ export function RoomPage() {
           connectingRef.current = false
         }
       } catch (err) {
+        isSettingUpChannelsRef.current = false
         if (err instanceof Error) {
           setError(err.message)
         } else {
@@ -758,7 +841,8 @@ export function RoomPage() {
     }
 
     fetchData()
-  }, [roomId, navigate, connectIfPlaying])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]) // Only depend on roomId - navigate is stable, but we removed it to be safe
 
   // Initialize scoreLimit from room data
   useEffect(() => {

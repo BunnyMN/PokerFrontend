@@ -1,5 +1,7 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '../lib/navigation'
 import { supabase } from '../shared/lib/supabase'
 import { generateRoomCode } from '../shared/utils/roomCode'
 import { z } from 'zod'

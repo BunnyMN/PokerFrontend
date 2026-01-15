@@ -1,9 +1,9 @@
 import { log, error as logError } from './logger'
 
 const getWebSocketUrl = (): string => {
-  const wsUrl = (import.meta.env as { VITE_GAME_SERVER_WS_URL?: string }).VITE_GAME_SERVER_WS_URL
+  const wsUrl = process.env.NEXT_PUBLIC_GAME_SERVER_WS_URL || process.env.VITE_GAME_SERVER_WS_URL
   if (!wsUrl) {
-    throw new Error('VITE_GAME_SERVER_WS_URL environment variable is not set')
+    throw new Error('NEXT_PUBLIC_GAME_SERVER_WS_URL or VITE_GAME_SERVER_WS_URL environment variable is not set')
   }
   return wsUrl
 }

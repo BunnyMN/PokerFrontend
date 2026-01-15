@@ -1,4 +1,6 @@
-import { Navigate } from 'react-router-dom'
+'use client'
+
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Skeleton } from './ui/Skeleton'
@@ -8,6 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
 
@@ -16,18 +19,25 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       const { data: { session } } = await supabase.auth.getSession()
       setAuthenticated(!!session)
       setLoading(false)
+      
+      if (!session) {
+        router.replace('/auth')
+      }
     }
 
     checkAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthenticated(!!session)
+      if (!session) {
+        router.replace('/auth')
+      }
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [router])
 
   if (loading) {
     return (
@@ -42,7 +52,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!authenticated) {
-    return <Navigate to="/auth" replace />
+    return null
   }
 
   return <>{children}</>

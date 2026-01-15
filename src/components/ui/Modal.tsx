@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState, ReactNode, HTMLAttributes } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../../utils/cn'

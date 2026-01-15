@@ -1,5 +1,7 @@
+'use client'
+
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '../lib/navigation'
 import { supabase } from '../shared/lib/supabase'
 import { Button } from '../shared/components/ui/Button'
 import { Input } from '../shared/components/ui/Input'

@@ -1,4 +1,4 @@
-const isDev = import.meta.env.DEV
+const isDev = process.env.NODE_ENV === 'development'
 
 export const log = (...args: any[]) => {
   if (isDev) {

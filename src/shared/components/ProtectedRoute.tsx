@@ -1,4 +1,6 @@
-import { Navigate } from 'react-router-dom'
+'use client'
+
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { Skeleton } from './ui/Skeleton'
@@ -8,6 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const router = useRouter()
   const { data: session, isLoading } = useQuery({
     queryKey: ['auth', 'session'],
     queryFn: async () => {
@@ -34,7 +37,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!session) {
-    return <Navigate to="/auth" replace />
+    router.replace('/auth')
+    return null
   }
 
   return <>{children}</>
