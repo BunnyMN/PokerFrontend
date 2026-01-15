@@ -22,7 +22,11 @@ export function useAuth() {
     onSuccess: (data) => {
       if (data.user && !data.error) {
         queryClient.setQueryData(['auth', 'user'], data.user)
-        navigate('/lobby')
+        queryClient.invalidateQueries({ queryKey: ['auth', 'user'] })
+        // Use setTimeout to ensure cookies are set before navigation
+        setTimeout(() => {
+          navigate('/lobby')
+        }, 100)
       }
     },
   })
@@ -33,7 +37,11 @@ export function useAuth() {
     onSuccess: (data) => {
       if (data.user && !data.error) {
         queryClient.setQueryData(['auth', 'user'], data.user)
-        navigate('/lobby')
+        queryClient.invalidateQueries({ queryKey: ['auth', 'user'] })
+        // Use setTimeout to ensure cookies are set before navigation
+        setTimeout(() => {
+          navigate('/lobby')
+        }, 100)
       }
     },
   })

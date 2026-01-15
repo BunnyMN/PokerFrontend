@@ -10,13 +10,13 @@ const getWebSocketUrl = (): string => {
 
 export interface GameSocketMessage {
   type: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface WSEventLog {
   timestamp: number
   event: string
-  data?: any
+  data?: unknown
 }
 
 export function connectGameSocketDebug(
@@ -28,7 +28,7 @@ export function connectGameSocketDebug(
 ): WebSocket {
   const wsUrl = getWebSocketUrl()
   
-  const logEvent = (event: string, data?: any) => {
+  const logEvent = (event: string, data?: unknown) => {
     const logEntry: WSEventLog = {
       timestamp: Date.now(),
       event,
@@ -108,7 +108,7 @@ export function connectGameSocketDebug(
     }
   }
   
-  ;(ws as any).sendSyncRequest = sendSyncRequest
+  ;(ws as WebSocket & { sendSyncRequest?: () => void }).sendSyncRequest = sendSyncRequest
 
   ws.onmessage = (event) => {
     logEvent('message received', { dataLength: event.data?.length || 0 })
@@ -163,7 +163,7 @@ export function connectGameSocketDebug(
     }
   }
   
-  ;(ws as any).markManualClose = () => {
+  ;(ws as WebSocket & { markManualClose?: () => void }).markManualClose = () => {
     manualClose = true
   }
 

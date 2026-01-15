@@ -1,18 +1,18 @@
 const isDev = process.env.NODE_ENV === 'development'
 
-export const log = (...args: any[]) => {
+export const log = (...args: unknown[]) => {
   if (isDev) {
     console.log(...args)
   }
 }
 
-export const warn = (...args: any[]) => {
+export const warn = (...args: unknown[]) => {
   if (isDev) {
     console.warn(...args)
   }
 }
 
-export const error = (...args: any[]) => {
+export const error = (...args: unknown[]) => {
   // Always log errors, even in production
   console.error(...args)
 }

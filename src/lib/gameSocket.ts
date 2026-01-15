@@ -10,13 +10,13 @@ const getWebSocketUrl = (): string => {
 
 export interface GameSocketMessage {
   type: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface WSEventLog {
   timestamp: number
   event: string
-  data?: any
+  data?: unknown
 }
 
 export function connectGameSocketDebug(
@@ -28,7 +28,7 @@ export function connectGameSocketDebug(
 ): WebSocket {
   const wsUrl = getWebSocketUrl()
   
-  const logEvent = (event: string, data?: any) => {
+  const logEvent = (event: string, data?: unknown) => {
     const logEntry: WSEventLog = {
       timestamp: Date.now(),
       event,
@@ -108,7 +108,7 @@ export function connectGameSocketDebug(
   }
   
   // Expose sendSyncRequest via a custom property for RoomPage to call after WELCOME
-  ;(ws as any).sendSyncRequest = sendSyncRequest
+  ;(ws as WebSocket & { sendSyncRequest?: () => void }).sendSyncRequest = sendSyncRequest
 
   ws.onmessage = (event) => {
     logEvent('message received', { dataLength: event.data?.length || 0 })
@@ -168,7 +168,7 @@ export function connectGameSocketDebug(
   }
   
   // Expose method to mark as manual close
-  ;(ws as any).markManualClose = () => {
+  ;(ws as WebSocket & { markManualClose?: () => void }).markManualClose = () => {
     manualClose = true
   }
 

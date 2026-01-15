@@ -6,7 +6,7 @@ const nextConfig = {
     optimizePackageImports: ['@tanstack/react-query'],
   },
   // Webpack configuration for better performance and Supabase compatibility
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -39,6 +39,13 @@ const nextConfig = {
       {
         module: /node_modules\/@supabase\/supabase-js/,
         message: /does not contain a default export/,
+      },
+      {
+        module: /node_modules\/@supabase\/supabase-js\/dist\/esm\/wrapper\.mjs/,
+      },
+      // Suppress webpack cache performance warnings (not critical, just optimization suggestions)
+      {
+        message: /Serializing big strings.*impacts deserialization performance/,
       },
     ]
     

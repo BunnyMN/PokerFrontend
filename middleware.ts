@@ -87,4 +87,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // Note: Middleware always runs on Edge Runtime in Next.js
+  // The Supabase warnings are expected and don't affect functionality
 }

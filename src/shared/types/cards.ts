@@ -9,12 +9,19 @@ export type Card = { rank: Rank; suit: Suit }
  *   b) {suit:0..3, rank:3..15}                 (numeric)
  *   c) {suit:"♠"|"♥"|"♣"|"♦", rank:3..15}       (mixed)
  */
-export function normalizeCard(card: any): { suit: Suit; rank: Rank } {
+export function normalizeCard(card: unknown): { suit: Suit; rank: Rank } {
   let suit: Suit
   let rank: Rank
 
+  // Type guard: ensure card is an object
+  if (typeof card !== 'object' || card === null) {
+    return { suit: 'S', rank: '3' } // fallback
+  }
+
+  const cardObj = card as { suit?: unknown; rank?: unknown }
+
   // Normalize suit
-  if (typeof card.suit === 'number') {
+  if (typeof cardObj.suit === 'number') {
     // Numeric suit: 0=>"S", 1=>"H", 2=>"C", 3=>"D"
     const suitMap: Record<number, Suit> = {
       0: "S",
@@ -22,8 +29,8 @@ export function normalizeCard(card: any): { suit: Suit; rank: Rank } {
       2: "C",
       3: "D",
     }
-    suit = suitMap[card.suit] || "S"
-  } else if (typeof card.suit === 'string') {
+    suit = suitMap[cardObj.suit] || "S"
+  } else if (typeof cardObj.suit === 'string') {
     // Check if it's a symbol
     const symbolToSuit: Record<string, Suit> = {
       "♠": "S",
@@ -31,7 +38,7 @@ export function normalizeCard(card: any): { suit: Suit; rank: Rank } {
       "♣": "C",
       "♦": "D",
     }
-    suit = symbolToSuit[card.suit] || (card.suit as Suit)
+    suit = symbolToSuit[cardObj.suit] || (cardObj.suit as Suit)
     // If it's already a valid suit code, use it
     if (!["S", "H", "C", "D"].includes(suit)) {
       suit = "S" // fallback
@@ -41,7 +48,7 @@ export function normalizeCard(card: any): { suit: Suit; rank: Rank } {
   }
 
   // Normalize rank
-  if (typeof card.rank === 'number') {
+  if (typeof cardObj.rank === 'number') {
     // Numeric rank: 3-10 => "3"-"10", 11=>"J", 12=>"Q", 13=>"K", 14=>"A", 15=>"2"
     const rankMap: Record<number, Rank> = {
       3: "3",
@@ -58,11 +65,11 @@ export function normalizeCard(card: any): { suit: Suit; rank: Rank } {
       14: "A",
       15: "2",
     }
-    rank = rankMap[card.rank] || "3" // fallback
-  } else if (typeof card.rank === 'string') {
+    rank = rankMap[cardObj.rank] || "3" // fallback
+  } else if (typeof cardObj.rank === 'string') {
     // Already a string, validate it's a valid rank
     const validRanks: Rank[] = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"]
-    rank = validRanks.includes(card.rank as Rank) ? (card.rank as Rank) : "3" // fallback
+    rank = validRanks.includes(cardObj.rank as Rank) ? (cardObj.rank as Rank) : "3" // fallback
   } else {
     rank = "3" // fallback
   }
@@ -88,7 +95,7 @@ export function suitToSymbol(suit: Suit): string {
  * Renders a card as a string (e.g., "♦3", "♠A")
  * Accepts any card format and normalizes it first
  */
-export function renderCard(card: any): string {
+export function renderCard(card: unknown): string {
   const normalized = normalizeCard(card)
   return `${suitToSymbol(normalized.suit)}${normalized.rank}`
 }

@@ -3,7 +3,7 @@
 import { memo, useMemo } from 'react'
 import { SeatCard } from './SeatCard'
 import { PlayingCard } from './PlayingCard'
-import { normalizeCard } from '../types/cards'
+import { normalizeCard, type Card } from '../types/cards'
 
 interface TableViewProps {
   seatedPlayerIds: string[]
@@ -13,7 +13,7 @@ interface TableViewProps {
   currentTurnPlayerId: string | null
   eliminated: string[]
   currentUserId: string | null
-  lastPlay: {playerId: string, cards: any[], kind?: string, fiveKind?: string} | null
+  lastPlay: {playerId: string, cards: Card[], kind?: string, fiveKind?: string} | null
   playerNames?: Record<string, string>
   playerAvatars?: Record<string, string | null>
 }
@@ -30,16 +30,15 @@ export const TableView = memo(function TableView({
   playerNames,
   playerAvatars,
 }: TableViewProps) {
-  const numSeats = seatedPlayerIds.length
-  if (numSeats === 0) return null
-
   // Calculate positions for seats around a circular table
   const centerX = 250
   const centerY = 250
   const radius = 200
+  const numSeats = seatedPlayerIds.length
 
-  // Memoize seat positions calculation
+  // Memoize seat positions calculation - must be called before any early returns
   const seatPositions = useMemo(() => {
+    if (numSeats === 0) return []
     return seatedPlayerIds.map((_, index) => {
       const angle = (270 + (index * 360) / numSeats) * (Math.PI / 180)
       const x = centerX + radius * Math.cos(angle)
@@ -47,6 +46,8 @@ export const TableView = memo(function TableView({
       return { x, y, angle: angle * (180 / Math.PI) }
     })
   }, [seatedPlayerIds, numSeats])
+
+  if (numSeats === 0) return null
 
   const getSeatPosition = (index: number) => seatPositions[index]
 
@@ -124,7 +125,7 @@ export const TableView = memo(function TableView({
 
         {/* Seats positioned around table */}
         {seatedPlayerIds.map((playerId, index) => {
-          const position = getSeatPosition(index, numSeats)
+          const position = getSeatPosition(index)
           return (
             <div
               key={playerId}
