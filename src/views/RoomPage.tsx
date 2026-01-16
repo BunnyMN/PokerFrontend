@@ -1687,7 +1687,7 @@ export function RoomPage() {
           })()}
 
           {/* Start Game Button (Owner only) */}
-          {isOwner && room.status !== 'playing' && !roundStart && (
+          {isOwner && room.status !== 'playing' && !roundStart && !yourHand && (
             (() => {
               const allReady = roomStatePlayers.length >= 2 && roomStatePlayers.every(p => p.isReady)
               return (
