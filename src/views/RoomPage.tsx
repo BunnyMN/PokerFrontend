@@ -122,14 +122,14 @@ export function RoomPage() {
     return map
   }, [players])
 
-  // Auto-connect function: connects to WS if room status is "playing"
+  // Auto-connect function: connects to WS for 'waiting' or 'playing' status
   const connectIfPlaying = useCallback(async (roomStatus: string, roomIdToConnect: string) => {
-    // If roomStatus !== "playing", do nothing
-    if (roomStatus !== 'playing') {
-      shouldReconnectRef.current = false // Stop reconnecting if room not playing
+    // Connect for 'waiting' or 'playing' status (need WS for ready/start logic)
+    if (roomStatus !== 'playing' && roomStatus !== 'waiting') {
+      shouldReconnectRef.current = false // Stop reconnecting if room finished
       return
     }
-    
+
     // Enable reconnection when connecting
     shouldReconnectRef.current = true
 
@@ -156,7 +156,7 @@ export function RoomPage() {
       return
     }
 
-    log('[AutoConnect] room.status is playing')
+    log('[AutoConnect] room.status is', roomStatus)
 
     try {
       // Get Supabase session
@@ -709,7 +709,7 @@ export function RoomPage() {
                 
                 // Check connection status after a delay to see if we need to retry
                 setTimeout(() => {
-                  if (shouldReconnectRef.current && room?.status === 'playing') {
+                  if (shouldReconnectRef.current && (room?.status === 'playing' || room?.status === 'waiting')) {
                     // Check if we're still not connected
                     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
                       attemptReconnect(attempt + 1)
@@ -880,9 +880,9 @@ export function RoomPage() {
                   return updatedRoom
                 })
                 
-                // Auto-connect when status becomes "playing" (for ALL users)
-                if (updatedRoom.status === 'playing') {
-                  log('[AutoConnect] Realtime: room status updated to playing')
+                // Auto-connect when status becomes "waiting" or "playing" (for ALL users)
+                if (updatedRoom.status === 'playing' || updatedRoom.status === 'waiting') {
+                  log('[AutoConnect] Realtime: room status updated to', updatedRoom.status)
                   connectIfPlaying(updatedRoom.status, roomId)
                 }
               }
@@ -976,24 +976,21 @@ export function RoomPage() {
     }
   }, [room?.score_limit, room?.owner_id, room?.status, room?.id, currentUserId])
 
-  // Fallback polling: check room status every 1s if not connected and room not playing
+  // Fallback polling: check room status every 1s if not connected
   useEffect(() => {
     if (!roomId || !room) return
 
-    // Only poll if:
-    // - WS is not connected/connecting
-    // - local room.status is not "playing" yet
-    const shouldPoll = 
-      wsStatus !== 'connected' && 
-      wsStatus !== 'connecting' && 
-      room.status !== 'playing'
+    // Only poll if WS is not connected/connecting
+    const shouldPoll =
+      wsStatus !== 'connected' &&
+      wsStatus !== 'connecting'
 
     if (!shouldPoll) {
       return
     }
 
     log('[Polling] Starting fallback polling for room status')
-    
+
     const pollInterval = setInterval(async () => {
       try {
         const { data: roomData, error } = await supabase
@@ -1007,9 +1004,9 @@ export function RoomPage() {
           return
         }
 
-        if (roomData?.status === 'playing') {
-          log('[Polling] Room status changed to playing, connecting WS')
-          connectIfPlaying('playing', roomId)
+        if (roomData?.status === 'playing' || roomData?.status === 'waiting') {
+          log('[Polling] Room status is', roomData.status, '- connecting WS')
+          connectIfPlaying(roomData.status, roomId)
           // Stop polling once connected
           clearInterval(pollInterval)
         }
@@ -1647,7 +1644,7 @@ export function RoomPage() {
               </div>
             )}
 
-            {wsStatus === 'disconnected' && room?.status === 'playing' && (
+            {wsStatus === 'disconnected' && (room?.status === 'playing' || room?.status === 'waiting') && (
               <Button size="sm" onClick={handleReconnect}>Reconnect</Button>
             )}
             
@@ -1859,16 +1856,6 @@ export function RoomPage() {
                 Set Rules
               </Button>
             </div>
-          )}
-          
-          {isOwner && room.status !== 'playing' && !roundStart && (
-            <Button 
-              onClick={handleStart}
-              disabled={isStarting}
-              isLoading={isStarting}
-            >
-              Start Game
-            </Button>
           )}
         </div>
 
