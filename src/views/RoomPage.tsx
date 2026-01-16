@@ -507,15 +507,15 @@ export function RoomPage() {
                 fiveKind: typeof lastPlay.fiveKind === 'string' ? lastPlay.fiveKind : undefined
               }
               setLastPlay(normalizedLastPlay)
-              
-              // If this is our play (successful), clear pending cards
-              if (normalizedLastPlay.playerId === currentUserId && pendingPlayCardsRef.current) {
-                log('[WS] Play successful, clearing pending cards')
-                setPendingPlayCards(null)
-                pendingPlayCardsRef.current = null
-              }
             } else {
               setLastPlay(null)
+            }
+
+            // Always clear pending cards on GAME_STATE - trust server state
+            if (pendingPlayCardsRef.current) {
+              log('[WS] Clearing pending cards on GAME_STATE')
+              setPendingPlayCards(null)
+              pendingPlayCardsRef.current = null
             }
             // Clear selection on GAME_STATE update (turn change)
             setSelectedCards([])
@@ -568,15 +568,27 @@ export function RoomPage() {
               log('[WS] Restoring cards after ACTION_ERROR:', pendingCards)
               setYourHand((prevHand) => {
                 if (!prevHand) return prevHand
-                
-                // Add back the pending cards
-                const restoredHand = [...prevHand, ...pendingCards]
+
+                // Filter out cards that are already in hand (prevent duplicates)
+                const cardsToRestore = pendingCards.filter(pendingCard =>
+                  !prevHand.some(handCard =>
+                    handCard.rank === pendingCard.rank && handCard.suit === pendingCard.suit
+                  )
+                )
+
+                if (cardsToRestore.length === 0) {
+                  log('[WS] No cards to restore (already in hand)')
+                  return prevHand
+                }
+
+                log('[WS] Actually restoring cards:', cardsToRestore)
+                const restoredHand = [...prevHand, ...cardsToRestore]
                 return sortCards(restoredHand)
               })
-              
+
               // Reset handOrder since we're restoring cards
               setHandOrder([])
-              
+
               // Clear pending cards
               setPendingPlayCards(null)
               pendingPlayCardsRef.current = null
