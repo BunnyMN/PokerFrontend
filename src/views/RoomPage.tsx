@@ -36,7 +36,6 @@ export function RoomPage() {
   const [error, setError] = useState<string | null>(null)
   const [updatingReady, setUpdatingReady] = useState(false)
   const [leaving, setLeaving] = useState(false)
-  const [isStarting, setIsStarting] = useState(false)
   
   // WebSocket state
   const [wsStatus, setWsStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'>('disconnected')
@@ -1381,120 +1380,6 @@ export function RoomPage() {
       }
     } finally {
       setLeaving(false)
-    }
-  }
-
-  const handleStart = async (e?: React.MouseEvent<HTMLButtonElement>) => {
-    e?.preventDefault()
-    log("[Start] clicked")
-    
-    if (isStarting) {
-      log("[Start] Already starting, ignoring duplicate click")
-      return
-    }
-
-    if (!roomId || !currentUserId) {
-      log("[Start] Missing roomId or currentUserId", { roomId, currentUserId })
-      setError('Missing room ID or user ID')
-      return
-    }
-
-    log("[Start] roomId", roomId)
-    setIsStarting(true)
-
-    try {
-      // Get session and access token
-      const { data: { session } } = await supabase.auth.getSession()
-      const hasToken = !!session?.access_token
-      log("[Start] session token present?", hasToken)
-      
-      if (!session?.access_token) {
-        setError('No access token available. Please log in again.')
-        setWsError('No access token available')
-        return
-      }
-
-      // Fetch the room row first to verify ownership and current status
-      const { data: roomData, error: roomFetchError } = await supabase
-        .from('rooms')
-        .select('id, owner_id, status')
-        .eq('id', roomId)
-        .single()
-
-      if (roomFetchError || !roomData) {
-        const errorMsg = roomFetchError?.message || 'Room not found'
-        logError("[Start] room fetch error:", roomFetchError)
-        setError(`Failed to fetch room: ${errorMsg}`)
-        setWsError(`Failed to fetch room: ${errorMsg}`)
-        return
-      }
-
-      // Verify ownership
-      if (currentUserId !== roomData.owner_id) {
-        const errorMsg = 'Only the room owner can start the game'
-        log("[Start] Ownership check failed", { currentUserId, ownerId: roomData.owner_id })
-        setError(errorMsg)
-        setWsError(errorMsg)
-        return
-      }
-
-      // If status is already "playing", do nothing (WS connection handled by connectIfPlaying)
-      if (roomData.status === 'playing') {
-        log("[Start] Room already playing, skipping PATCH")
-        setIsStarting(false)
-        return
-      }
-
-      // Update room status to 'playing'
-      // The realtime subscription will trigger connectIfPlaying for ALL users (including owner)
-      log("[Start] Patching rooms.status to 'playing'")
-      const { error: updateError } = await supabase
-        .from('rooms')
-        .update({ status: 'playing' })
-        .eq('id', roomId)
-
-      if (updateError) {
-        // Handle Supabase error with detailed information
-        const errorDetails = {
-          status: (updateError as { status?: number })?.status || 'unknown',
-          message: updateError.message || 'Unknown error',
-          details: (updateError as { details?: unknown })?.details || null,
-          hint: (updateError as { hint?: string })?.hint || null,
-        }
-        
-        logError('[Start] patch rooms.status result ERROR:', errorDetails)
-        const errorMsg = `Failed to update room status: ${errorDetails.message}${errorDetails.hint ? ` (${errorDetails.hint})` : ''}`
-        setError(errorMsg)
-        setWsError(errorMsg)
-        setIsStarting(false)
-        return
-      }
-
-      log("[Start] patch rooms.status result SUCCESS")
-      // Note: WS connection will be triggered by realtime subscription via connectIfPlaying
-      // Reset isStarting when WS connects or after a timeout
-      const resetTimeout = setTimeout(() => {
-        setIsStarting(false)
-      }, 5000)
-      
-      // Also reset when WS connects or errors
-      const checkConnection = setInterval(() => {
-        if (wsStatus === 'connected' || wsStatus === 'error') {
-          clearInterval(checkConnection)
-          clearTimeout(resetTimeout)
-          setIsStarting(false)
-        }
-      }, 100)
-      
-      setTimeout(() => {
-        clearInterval(checkConnection)
-      }, 10000)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start game'
-      logError('[Start] Unexpected error:', err)
-      setError(errorMessage)
-      setWsError(errorMessage)
-      setIsStarting(false)
     }
   }
 
