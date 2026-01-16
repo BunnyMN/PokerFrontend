@@ -242,8 +242,9 @@ export function ProfilePage() {
               <div className="relative group">
                 {avatarUrl ? (
                   <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-cyan-400/30 ring-2 ring-cyan-400/20">
-                    <img 
-                      src={avatarUrl} 
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={avatarUrl}
                       alt="Profile" 
                       className="w-full h-full object-cover"
                       onError={(e) => {

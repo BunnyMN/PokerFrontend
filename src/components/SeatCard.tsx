@@ -56,8 +56,9 @@ export const SeatCard = memo(function SeatCard({
           isEliminated && 'border-pink-500/50'
         )}>
           {playerAvatar ? (
-            <img 
-              src={playerAvatar} 
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={playerAvatar}
               alt={displayName}
               className="w-full h-full object-cover"
               onError={(e) => {

@@ -749,9 +749,9 @@ export function RoomPage() {
       wsRef.current = null
       connectingRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // currentUserId, room?.id, room?.status, and roomId are intentionally omitted to prevent infinite loops
     // They are accessed via closure and refs where needed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -1018,9 +1018,9 @@ export function RoomPage() {
       log('[Polling] Stopping fallback polling')
       clearInterval(pollInterval)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // room is intentionally omitted to prevent infinite loops - we check room?.status inside the interval
     // connectIfPlaying is stable due to useCallback with empty deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, wsStatus, connectIfPlaying])
 
   const fetchPlayers = async (id: string) => {
