@@ -1880,9 +1880,10 @@ export function RoomPage() {
             )}
 
             {/* Main Game Layout: Table + Queue Panel */}
-            <div className="flex flex-col lg:flex-row gap-6 justify-center">
-              {/* Table View */}
-              <div className="flex-1 min-w-0">
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 justify-center">
+              {/* Table View + Your Hand (vertical stack) */}
+              <div className="flex-1 min-w-0 flex flex-col gap-4 sm:gap-6">
+                {/* Table View */}
                 <TableView
                   seatedPlayerIds={seatedPlayerIds}
                   handsCount={handsCount}
@@ -1895,25 +1896,9 @@ export function RoomPage() {
                   playerNames={playerNameMap}
                   playerAvatars={playerAvatarMap}
                 />
-              </div>
 
-              {/* Queue Panel */}
-              <div className="lg:w-80">
-                <QueuePanel
-                  queuePlayerIds={queuePlayerIds}
-                  seatedPlayerIds={seatedPlayerIds}
-                  handsCount={handsCount}
-                  totalScores={totalScores}
-                  scoreLimit={scoreLimit}
-                  currentTurnPlayerId={currentTurnPlayerId}
-                  eliminated={eliminated}
-                  playerNames={playerNameMap}
-                />
-              </div>
-            </div>
-
-            {/* Your Hand and Controls (Bottom Center) */}
-            <UICard>
+                {/* Your Hand and Controls (directly below table) */}
+                <UICard>
               <div className="space-y-3 sm:space-y-5">
                 <div>
                   <div className="flex items-center justify-between mb-2 sm:mb-4">
@@ -2069,6 +2054,22 @@ export function RoomPage() {
                 )}
               </div>
             </UICard>
+              </div>
+
+              {/* Queue Panel */}
+              <div className="lg:w-80 flex-shrink-0">
+                <QueuePanel
+                  queuePlayerIds={queuePlayerIds}
+                  seatedPlayerIds={seatedPlayerIds}
+                  handsCount={handsCount}
+                  totalScores={totalScores}
+                  scoreLimit={scoreLimit}
+                  currentTurnPlayerId={currentTurnPlayerId}
+                  eliminated={eliminated}
+                  playerNames={playerNameMap}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
