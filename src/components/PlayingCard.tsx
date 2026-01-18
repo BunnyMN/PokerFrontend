@@ -7,7 +7,7 @@ interface PlayingCardProps {
   card: Card
   isSelected?: boolean
   onClick?: () => void
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
   isBack?: boolean
 }
@@ -29,9 +29,24 @@ export const PlayingCard = memo(function PlayingCard({
   isBack = false,
 }: PlayingCardProps) {
   const sizeClasses = {
+    xs: 'w-8 h-12 text-[8px]',
     sm: 'w-12 h-16 text-xs',
     md: 'w-16 h-24 text-sm',
     lg: 'w-20 h-32 text-base',
+  }
+
+  const centerSuitSizes = {
+    xs: 'text-sm',
+    sm: 'text-base',
+    md: 'text-xl',
+    lg: 'text-2xl',
+  }
+
+  const paddingClasses = {
+    xs: 'p-0.5',
+    sm: 'p-1',
+    md: 'p-2',
+    lg: 'p-2',
   }
 
   const suitSymbol = suitToSymbol(card.suit)
@@ -60,7 +75,7 @@ export const PlayingCard = memo(function PlayingCard({
         
         {/* Simple logo in center */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-black text-2xl font-bold">
+          <div className={cn('text-black font-bold', centerSuitSizes[size])}>
             ♠
           </div>
         </div>
@@ -82,22 +97,20 @@ export const PlayingCard = memo(function PlayingCard({
       onClick={onClick}
     >
       {/* Card content */}
-      <div className="absolute inset-0 p-2 flex flex-col justify-between">
+      <div className={cn('absolute inset-0 flex flex-col justify-between', paddingClasses[size])}>
         {/* Top left: Rank and Suit */}
         <div className={cn('font-bold', suitColor)}>
           <div className="leading-tight">{card.rank}</div>
-       
         </div>
 
-        {/* Center: Large suit symbol - 50% smaller */}
-        <div className={cn('absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xl', suitColor)}>
+        {/* Center: Large suit symbol */}
+        <div className={cn('absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2', centerSuitSizes[size], suitColor)}>
           {suitSymbol}
         </div>
 
         {/* Bottom right: Rank and Suit (rotated) */}
         <div className={cn('font-bold self-end rotate-180', suitColor)}>
           <div className="leading-tight">{card.rank}</div>
-         
         </div>
       </div>
     </div>

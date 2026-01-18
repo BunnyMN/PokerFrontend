@@ -12,6 +12,7 @@ interface SeatCardProps {
   isCurrentTurn: boolean
   isEliminated: boolean
   isYou: boolean
+  compact?: boolean
 }
 
 export const SeatCard = memo(function SeatCard({
@@ -24,6 +25,7 @@ export const SeatCard = memo(function SeatCard({
   isCurrentTurn,
   isEliminated,
   isYou,
+  compact = false,
 }: SeatCardProps) {
   const shortId = playerId.length > 8 ? playerId.substring(0, 8) + '...' : playerId
   const displayName = playerName || shortId
@@ -35,7 +37,7 @@ export const SeatCard = memo(function SeatCard({
       className={cn(
         'relative glass rounded-xl border-2 text-center transition-all duration-300',
         'hover:scale-105 hover:shadow-glow-cyan',
-        'w-36 p-4',
+        compact ? 'w-20 sm:w-24 p-1.5 sm:p-2' : 'w-36 p-4',
         isCurrentTurn
           ? 'border-cyan-400 shadow-glow-cyan ring-2 ring-cyan-400/50 animate-pulse-glow'
           : 'border-cyan-500/30',
@@ -44,13 +46,14 @@ export const SeatCard = memo(function SeatCard({
       )}
     >
       {/* Holographic avatar frame */}
-      <div className="relative mb-3">
+      <div className={cn('relative', compact ? 'mb-1' : 'mb-3')}>
         <div className={cn(
-          'w-16 h-16 mx-auto rounded-full border-2 flex items-center justify-center overflow-hidden',
+          'mx-auto rounded-full border-2 flex items-center justify-center overflow-hidden',
           'glass-lg',
-          isCurrentTurn 
-            ? 'border-cyan-400 shadow-glow-cyan' 
-            : isYou 
+          compact ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-16 h-16',
+          isCurrentTurn
+            ? 'border-cyan-400 shadow-glow-cyan'
+            : isYou
             ? 'border-lime-400/60 shadow-neon-lime'
             : 'border-cyan-500/40',
           isEliminated && 'border-pink-500/50'
@@ -74,7 +77,8 @@ export const SeatCard = memo(function SeatCard({
           ) : (
             /* Avatar placeholder - first letter of display name */
             <div className={cn(
-              'text-2xl font-bold font-heading',
+              'font-bold font-heading',
+              compact ? 'text-sm sm:text-base' : 'text-2xl',
               isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400',
               isEliminated && 'text-pink-400'
             )}>
@@ -90,49 +94,65 @@ export const SeatCard = memo(function SeatCard({
       </div>
 
       {/* Player name */}
-      <div className="font-heading font-semibold text-sm mb-2">
+      <div className={cn('font-heading font-semibold', compact ? 'text-[10px] sm:text-xs mb-1' : 'text-sm mb-2')}>
         <div className={cn(
           'truncate',
           isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-white',
           isEliminated && 'text-pink-400'
         )}>
-          {displayName}
+          {compact ? displayName.substring(0, 6) : displayName}
         </div>
         {isYou && (
-          <span className="ml-1 text-xs text-lime-400 text-glow-lime font-medium">(YOU)</span>
+          <span className={cn('text-lime-400 text-glow-lime font-medium', compact ? 'text-[8px]' : 'ml-1 text-xs')}>{compact ? 'YOU' : '(YOU)'}</span>
         )}
       </div>
 
       {/* Stats */}
-      <div className="space-y-2 text-xs">
-        <div className="flex items-center justify-between">
-          <span className="text-cyan-400/80">Cards:</span>
-          <span className="font-bold text-cyan-300">{cardsLeft}</span>
-        </div>
-        
-        {/* Score progress bar */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-cyan-400/80">Score:</span>
+      <div className={cn('text-xs', compact ? 'space-y-0.5' : 'space-y-2')}>
+        {compact ? (
+          /* Compact stats - single line */
+          <div className="flex items-center justify-center gap-1 text-[9px] sm:text-[10px]">
+            <span className="text-cyan-300 font-bold">{cardsLeft}</span>
+            <span className="text-cyan-400/60">|</span>
             <span className={cn(
               'font-bold',
               scorePercentage >= 80 ? 'text-pink-400' : scorePercentage >= 50 ? 'text-yellow-400' : 'text-lime-400'
             )}>
-              {totalScore} / {scoreLimit}
+              {totalScore}
             </span>
           </div>
-          <div className="h-1.5 bg-cyan-900/30 rounded-full overflow-hidden">
-            <div 
-              className={cn(
-                'h-full transition-all duration-300 rounded-full',
-                scorePercentage >= 80 ? 'bg-gradient-to-r from-pink-500 to-pink-600 shadow-neon-magenta' :
-                scorePercentage >= 50 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
-                'bg-gradient-to-r from-lime-400 to-lime-500 shadow-neon-lime'
-              )}
-              style={{ width: `${Math.min(scorePercentage, 100)}%` }}
-            />
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-cyan-400/80">Cards:</span>
+              <span className="font-bold text-cyan-300">{cardsLeft}</span>
+            </div>
+
+            {/* Score progress bar */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-cyan-400/80">Score:</span>
+                <span className={cn(
+                  'font-bold',
+                  scorePercentage >= 80 ? 'text-pink-400' : scorePercentage >= 50 ? 'text-yellow-400' : 'text-lime-400'
+                )}>
+                  {totalScore} / {scoreLimit}
+                </span>
+              </div>
+              <div className="h-1.5 bg-cyan-900/30 rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full transition-all duration-300 rounded-full',
+                    scorePercentage >= 80 ? 'bg-gradient-to-r from-pink-500 to-pink-600 shadow-neon-magenta' :
+                    scorePercentage >= 50 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
+                    'bg-gradient-to-r from-lime-400 to-lime-500 shadow-neon-lime'
+                  )}
+                  style={{ width: `${Math.min(scorePercentage, 100)}%` }}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Status badges */}
@@ -140,18 +160,24 @@ export const SeatCard = memo(function SeatCard({
         <Badge
           variant="warning"
           size="sm"
-          className="absolute -top-2 -right-2 shadow-lg border-cyan-400 bg-cyan-900/50 text-cyan-300 font-heading"
+          className={cn(
+            'absolute shadow-lg border-cyan-400 bg-cyan-900/50 text-cyan-300 font-heading',
+            compact ? '-top-1 -right-1 text-[8px] px-1 py-0' : '-top-2 -right-2'
+          )}
         >
-          TURN
+          {compact ? '!' : 'TURN'}
         </Badge>
       )}
       {isEliminated && (
         <Badge
           variant="danger"
           size="sm"
-          className="absolute -top-2 -left-2 shadow-lg border-pink-400 bg-pink-900/50 text-pink-300 font-heading"
+          className={cn(
+            'absolute shadow-lg border-pink-400 bg-pink-900/50 text-pink-300 font-heading',
+            compact ? '-top-1 -left-1 text-[8px] px-1 py-0' : '-top-2 -left-2'
+          )}
         >
-          ELIM
+          {compact ? 'X' : 'ELIM'}
         </Badge>
       )}
     </div>

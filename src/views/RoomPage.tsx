@@ -19,6 +19,7 @@ import { Badge } from '../components/ui/Badge'
 import { toast } from '../components/ui/Toast'
 import { Skeleton } from '../components/ui/Skeleton'
 import { cn } from '../utils/cn'
+import { useGameSounds } from '../hooks/useGameSounds'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -87,6 +88,35 @@ export function RoomPage() {
   const [scoreLimitInput, setScoreLimitInput] = useState<number>(60)
   const [totalScores, setTotalScores] = useState<Record<string, number>>({})
   const [eliminated, setEliminated] = useState<string[]>([])
+
+  // Responsive state for mobile detection
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    function checkMobile() {
+      setIsMobile(window.innerWidth < 640)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Sound effects
+  const {
+    playCardDeal,
+    playCardPlay,
+    playYourTurn,
+    playPass,
+    playRoundEnd,
+    playWin,
+    playLose,
+    playButtonClick
+  } = useGameSounds();
+
+  // Refs to track previous state for sound triggers
+  const prevYourHandLengthRef = useRef<number>(0);
+  const prevCurrentTurnRef = useRef<string | null>(null);
+  const prevLastPlayRef = useRef<typeof lastPlay>(null);
 
   // Helper function to get display name for a player
   const getPlayerDisplayName = useCallback((playerId: string): string => {
@@ -987,6 +1017,51 @@ export function RoomPage() {
     }
   }, [room?.score_limit, room?.owner_id, room?.status, room?.id, currentUserId])
 
+  // Sound effect: Cards dealt
+  useEffect(() => {
+    if (yourHand && yourHand.length > 0 && prevYourHandLengthRef.current === 0) {
+      playCardDeal();
+    }
+    prevYourHandLengthRef.current = yourHand?.length || 0;
+  }, [yourHand, playCardDeal]);
+
+  // Sound effect: Your turn notification
+  useEffect(() => {
+    if (currentTurnPlayerId && currentTurnPlayerId === currentUserId && prevCurrentTurnRef.current !== currentUserId) {
+      playYourTurn();
+    }
+    prevCurrentTurnRef.current = currentTurnPlayerId;
+  }, [currentTurnPlayerId, currentUserId, playYourTurn]);
+
+  // Sound effect: Card played
+  useEffect(() => {
+    if (lastPlay && lastPlay !== prevLastPlayRef.current) {
+      // Don't play sound if it's our own play (we play it on button click)
+      if (lastPlay.playerId !== currentUserId) {
+        playCardPlay();
+      }
+    }
+    prevLastPlayRef.current = lastPlay;
+  }, [lastPlay, currentUserId, playCardPlay]);
+
+  // Sound effect: Round end
+  useEffect(() => {
+    if (roundEnd) {
+      playRoundEnd();
+    }
+  }, [roundEnd, playRoundEnd]);
+
+  // Sound effect: Game end (win/lose)
+  useEffect(() => {
+    if (gameEnd) {
+      if (gameEnd.winnerPlayerId === currentUserId) {
+        playWin();
+      } else {
+        playLose();
+      }
+    }
+  }, [gameEnd, currentUserId, playWin, playLose]);
+
   // Fallback polling: check room status every 1s if not connected
   useEffect(() => {
     if (!roomId || !room) return
@@ -1300,12 +1375,14 @@ export function RoomPage() {
     // Allow 1, 2, 3, or 5 cards (not 4)
     const validLengths = [1, 2, 3, 5]
     if (!validLengths.includes(selectedCards.length)) return
-    
+
+    playCardPlay(); // Play card sound
     sendPlayMessage(selectedCards)
     // Selection cleared in sendPlayMessage after successful send
   }
 
   const handlePass = () => {
+    playPass(); // Play pass sound
     sendPassMessage()
   }
 
@@ -1313,6 +1390,8 @@ export function RoomPage() {
 
   const handleToggleReady = async () => {
     if (!roomId || !currentUserId || updatingReady) return
+
+    playButtonClick(); // Play button click sound
 
     // If WS is connected, use WS READY messages
     if (wsStatus === 'connected' && wsRef.current?.readyState === WebSocket.OPEN) {
@@ -1835,14 +1914,14 @@ export function RoomPage() {
 
             {/* Your Hand and Controls (Bottom Center) */}
             <UICard>
-              <div className="space-y-5">
+              <div className="space-y-3 sm:space-y-5">
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-heading font-bold text-cyan-300 text-glow-cyan">
-                      Your Hand ({yourHand.length} cards)
+                  <div className="flex items-center justify-between mb-2 sm:mb-4">
+                    <h3 className="text-sm sm:text-lg font-heading font-bold text-cyan-300 text-glow-cyan">
+                      Your Hand ({yourHand.length})
                       {selectedCards.length > 0 && (
-                        <span className="ml-2 text-sm text-lime-400 text-glow-lime font-medium">
-                          • Selected: {selectedCards.length}/5
+                        <span className="ml-1 sm:ml-2 text-xs sm:text-sm text-lime-400 text-glow-lime font-medium">
+                          • {selectedCards.length}/5
                         </span>
                       )}
                     </h3>
@@ -1852,12 +1931,19 @@ export function RoomPage() {
                         variant="secondary"
                         size="sm"
                         title="Sort cards by rank and suit"
+                        className="text-xs sm:text-sm px-2 sm:px-3"
                       >
                         Sort
                       </Button>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-3 justify-center">
+                  {/* Hand container - overlapping cards on mobile */}
+                  <div className={cn(
+                    'flex justify-center',
+                    isMobile
+                      ? 'overflow-x-auto pb-2 -mx-2 px-2'
+                      : 'flex-wrap gap-3'
+                  )}>
                     {(() => {
                       // If user has custom order, use it; otherwise show sorted cards
                       if (handOrder.length > 0 && handOrder.length === yourHand.length) {
@@ -1867,56 +1953,65 @@ export function RoomPage() {
                         // Default sorted order
                         return sortCards(yourHand)
                       }
-                    })().map((card) => {
+                    })().map((card, displayIndex) => {
                       const isSelected = selectedCards.some(
                         (c) => cardsEqual(c, card)
                       )
                       const originalIdx = yourHand.findIndex((c) => cardsEqual(c, card))
-                      
+
                       return (
                         <div
                           key={`${card.rank}-${card.suit}-${originalIdx}`}
-                          draggable
+                          draggable={!isMobile}
                           onDragStart={(e) => {
+                            if (isMobile) return
                             e.dataTransfer.setData('cardIndex', String(originalIdx))
                             e.dataTransfer.effectAllowed = 'move'
                           }}
                           onDragOver={(e) => {
+                            if (isMobile) return
                             e.preventDefault()
                             e.dataTransfer.dropEffect = 'move'
                           }}
                           onDrop={(e) => {
+                            if (isMobile) return
                             e.preventDefault()
                             const draggedIndex = parseInt(e.dataTransfer.getData('cardIndex'), 10)
                             const dropIndex = originalIdx
-                            
+
                             if (draggedIndex === dropIndex) return
-                            
+
                             setHandOrder((prevOrder) => {
                               if (prevOrder.length === 0) {
                                 // Initialize order array
                                 return yourHand.map((_, idx) => idx)
                               }
-                              
+
                               const newOrder = [...prevOrder]
                               const draggedPos = newOrder.indexOf(draggedIndex)
                               const dropPos = newOrder.indexOf(dropIndex)
-                              
+
                               // Remove dragged item
                               newOrder.splice(draggedPos, 1)
                               // Insert at new position
                               newOrder.splice(dropPos, 0, draggedIndex)
-                              
+
                               return newOrder
                             })
                           }}
-                          className="cursor-move transition-transform duration-200 hover:scale-110"
+                          className={cn(
+                            'transition-all duration-200 flex-shrink-0',
+                            !isMobile && 'cursor-move hover:scale-110',
+                            isMobile && displayIndex > 0 && '-ml-4',
+                            isSelected && 'z-10 -translate-y-2 sm:-translate-y-3'
+                          )}
+                          style={isMobile && isSelected ? { marginLeft: displayIndex === 0 ? 0 : '-0.5rem' } : undefined}
                         >
                           <PlayingCard
                             card={card}
                             isSelected={isSelected}
                             onClick={() => handleCardClick(card)}
-                            size="md"
+                            size={isMobile ? 'sm' : 'md'}
                           />
                         </div>
                       )
@@ -1926,43 +2021,47 @@ export function RoomPage() {
 
                 {/* Play/Pass Buttons */}
                 {!roundEnd && !gameEnd && (
-                  <div className="flex gap-4 justify-center pt-2">
+                  <div className="flex gap-2 sm:gap-4 justify-center pt-1 sm:pt-2">
                     <Button
                       onClick={handlePlay}
                       variant="success"
+                      size={isMobile ? 'sm' : 'md'}
                       disabled={(() => {
                         const validLengths = [1, 2, 3, 5]
                         return !validLengths.includes(selectedCards.length) || !isMyTurn || wsStatus !== 'connected'
                       })()}
                       title={
-                        wsStatus !== 'connected' 
-                          ? 'WebSocket disconnected' 
-                          : !isMyTurn 
-                          ? 'Not your turn' 
-                          : selectedCards.length === 0 
-                          ? 'Select 1, 2, 3, or 5 cards to play' 
+                        wsStatus !== 'connected'
+                          ? 'WebSocket disconnected'
+                          : !isMyTurn
+                          ? 'Not your turn'
+                          : selectedCards.length === 0
+                          ? 'Select 1, 2, 3, or 5 cards to play'
                           : selectedCards.length === 4
                           ? '4 cards not allowed. Select 1, 2, 3, or 5 cards'
                           : selectedCards.length > 5
                           ? 'Maximum 5 cards allowed'
                           : ''
                       }
+                      className="text-xs sm:text-sm"
                     >
                       PLAY {selectedCards.length > 0 && `(${selectedCards.length})`}
                     </Button>
                     <Button
                       onClick={handlePass}
                       variant="warning"
+                      size={isMobile ? 'sm' : 'md'}
                       disabled={!isMyTurn || !lastPlay || wsStatus !== 'connected'}
                       title={
-                        wsStatus !== 'connected' 
-                          ? 'WebSocket disconnected' 
-                          : !isMyTurn 
-                          ? 'Not your turn' 
-                          : !lastPlay 
-                          ? 'You must start the trick' 
+                        wsStatus !== 'connected'
+                          ? 'WebSocket disconnected'
+                          : !isMyTurn
+                          ? 'Not your turn'
+                          : !lastPlay
+                          ? 'You must start the trick'
                           : ''
                       }
+                      className="text-xs sm:text-sm"
                     >
                       PASS
                     </Button>

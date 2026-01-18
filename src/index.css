@@ -419,3 +419,214 @@ select:focus {
 .border-neon-magenta { border-color: #ff00aa; }
 .border-neon-purple { border-color: #9d00ff; }
 .border-neon-lime { border-color: #00ff9d; }
+
+/* ===== RESPONSIVE CARD STYLES ===== */
+
+/* Card overlap container - stacks cards with negative margin on mobile */
+.card-overlap-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Mobile: Cards overlap horizontally */
+@media (max-width: 640px) {
+  .card-overlap-container {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 0.5rem;
+    gap: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .card-overlap-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .card-overlap-container > * {
+    flex-shrink: 0;
+    margin-left: -1rem;
+  }
+
+  .card-overlap-container > *:first-child {
+    margin-left: 0;
+  }
+
+  /* Fan effect - slightly rotate cards */
+  .card-overlap-container.fan-effect > *:nth-child(odd) {
+    transform: rotate(-2deg);
+  }
+
+  .card-overlap-container.fan-effect > *:nth-child(even) {
+    transform: rotate(2deg);
+  }
+}
+
+/* Selected card in overlap container */
+.card-overlap-container > *.card-selected {
+  z-index: 10;
+  transform: translateY(-0.5rem) !important;
+}
+
+@media (max-width: 640px) {
+  .card-overlap-container > *.card-selected {
+    transform: translateY(-0.75rem) !important;
+    margin-left: -0.5rem;
+    margin-right: 0.5rem;
+  }
+}
+
+/* ===== RESPONSIVE TABLE STYLES ===== */
+
+/* Poker table responsive container */
+.poker-table-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  min-height: 600px;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .poker-table-container {
+    padding: 1rem;
+    min-height: 450px;
+  }
+}
+
+@media (max-width: 480px) {
+  .poker-table-container {
+    padding: 0.5rem;
+    min-height: 350px;
+  }
+}
+
+/* Responsive seat cards */
+.seat-card-responsive {
+  width: 9rem;
+  padding: 1rem;
+}
+
+@media (max-width: 768px) {
+  .seat-card-responsive {
+    width: 7rem;
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .seat-card-responsive {
+    width: 5.5rem;
+    padding: 0.5rem;
+  }
+}
+
+/* ===== RESPONSIVE LAYOUT UTILITIES ===== */
+
+/* Hide on mobile */
+.hide-mobile {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none;
+  }
+}
+
+/* Show only on mobile */
+.show-mobile {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .show-mobile {
+    display: block;
+  }
+}
+
+/* Responsive text sizes */
+.text-responsive-sm {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .text-responsive-sm {
+    font-size: 0.75rem;
+  }
+}
+
+.text-responsive-base {
+  font-size: 1rem;
+}
+
+@media (max-width: 640px) {
+  .text-responsive-base {
+    font-size: 0.875rem;
+  }
+}
+
+.text-responsive-lg {
+  font-size: 1.125rem;
+}
+
+@media (max-width: 640px) {
+  .text-responsive-lg {
+    font-size: 1rem;
+  }
+}
+
+/* ===== RESPONSIVE BUTTON STYLES ===== */
+
+@media (max-width: 640px) {
+  .btn-responsive {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* ===== MOBILE HAND DISPLAY ===== */
+
+.hand-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .hand-container {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0.5rem 1rem;
+    margin: 0 -1rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .hand-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hand-container > * {
+    flex-shrink: 0;
+    margin-left: -0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .hand-container > *:first-child {
+    margin-left: 0;
+  }
+
+  .hand-container > *:hover,
+  .hand-container > *.selected {
+    z-index: 10;
+    transform: translateY(-0.5rem);
+  }
+}

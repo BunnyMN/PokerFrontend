@@ -386,32 +386,32 @@ export function LobbyPage() {
     <div className="min-h-screen bg-[var(--bg)]">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--bg-surface)]/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex flex-col gap-1.5">
-              <h1 className="text-2xl sm:text-3xl font-heading font-bold text-cyan-300 text-glow-cyan">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-20">
+            <div className="flex flex-col gap-0.5 sm:gap-1.5">
+              <h1 className="text-lg sm:text-2xl md:text-3xl font-heading font-bold text-cyan-300 text-glow-cyan">
                 Game Lobby
               </h1>
               {(displayName || userEmail) && (
-                <p className="text-xs sm:text-sm text-cyan-400/70 font-medium">
+                <p className="text-[10px] sm:text-xs md:text-sm text-cyan-400/70 font-medium truncate max-w-[150px] sm:max-w-none">
                   Welcome, <span className="text-cyan-300">{displayName || userEmail}</span>
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/profile')}
-                className="border border-white/10 hover:bg-white/5 hover:border-cyan-400/30"
+                className="border border-white/10 hover:bg-white/5 hover:border-cyan-400/30 text-xs sm:text-sm px-2 sm:px-3"
               >
                 Profile
               </Button>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={handleSignOut}
-                className="border border-white/10 hover:bg-white/5 hover:border-cyan-400/30"
+                className="border border-white/10 hover:bg-white/5 hover:border-cyan-400/30 text-xs sm:text-sm px-2 sm:px-3"
               >
                 Sign Out
               </Button>
@@ -421,10 +421,10 @@ export function LobbyPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
-        <div className="space-y-8">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-12">
+        <div className="space-y-4 sm:space-y-8">
           {/* Action Cards Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6 lg:gap-8">
             {/* Create Room Card */}
             <Card className="hover:shadow-glow-cyan transition-all duration-300">
               <CardHeader>
@@ -589,7 +589,7 @@ export function LobbyPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {filteredRooms.map((room) => {
                     const isJoinable = room.status === 'lobby'
                     const isFinished = room.status === 'finished'
@@ -597,7 +597,7 @@ export function LobbyPage() {
                       <div
                         key={room.id}
                         className={cn(
-                          'flex items-center gap-5 p-5 rounded-xl border border-white/10',
+                          'flex items-center gap-2 sm:gap-5 p-2.5 sm:p-5 rounded-lg sm:rounded-xl border border-white/10',
                           'hover:bg-white/5 hover:border-cyan-400/30 hover:shadow-neon-cyan/20',
                           'transition-all duration-300 group cursor-pointer',
                           'backdrop-blur-sm',
@@ -605,36 +605,36 @@ export function LobbyPage() {
                         )}
                       >
                         {/* Left: Icon + Room Code */}
-                        <div className="flex items-center gap-4 flex-shrink-0">
-                          <div className="w-12 h-12 rounded-xl border border-cyan-400/30 flex items-center justify-center bg-cyan-400/10 group-hover:bg-cyan-400/20 group-hover:border-cyan-400/50 transition-all duration-300">
-                            <PeopleIcon className="w-6 h-6 text-cyan-400" />
+                        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+                          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl border border-cyan-400/30 flex items-center justify-center bg-cyan-400/10 group-hover:bg-cyan-400/20 group-hover:border-cyan-400/50 transition-all duration-300">
+                            <PeopleIcon className="w-4 h-4 sm:w-6 sm:h-6 text-cyan-400" />
                           </div>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xl font-heading font-bold text-cyan-300 font-mono tracking-wider">
+                          <div className="flex flex-col gap-0">
+                            <span className="text-sm sm:text-xl font-heading font-bold text-cyan-300 font-mono tracking-wider">
                               {room.code}
                             </span>
-                            <span className="text-xs text-cyan-400/50">
+                            <span className="text-[10px] sm:text-xs text-cyan-400/50 hidden sm:block">
                               {timeAgo(room.created_at)}
                             </span>
                           </div>
                         </div>
 
                         {/* Middle: Status + Info */}
-                        <div className="flex-1 min-w-0 flex items-center gap-4 flex-wrap">
+                        <div className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-4 flex-wrap">
                           <Badge
                             variant={room.status === 'playing' ? 'success' : room.status === 'finished' ? 'danger' : 'info'}
                             size="sm"
-                            className="font-semibold"
+                            className="font-semibold text-[10px] sm:text-xs"
                           >
-                            {room.status === 'lobby' ? 'WAITING' : room.status === 'finished' ? 'FINISHED' : 'PLAYING'}
+                            {room.status === 'lobby' ? 'WAIT' : room.status === 'finished' ? 'END' : 'PLAY'}
                           </Badge>
-                          <div className="flex items-center gap-1.5 text-xs text-cyan-400/70">
-                            <PeopleIcon className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-1 text-[10px] sm:text-xs text-cyan-400/70">
+                            <PeopleIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                             <span className="font-medium">
-                              {room.player_count || 0} {room.player_count === 1 ? 'player' : 'players'}
+                              {room.player_count || 0}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-cyan-400/70">
+                          <div className="hidden sm:flex items-center gap-1.5 text-xs text-cyan-400/70">
                             <span className="font-medium">Limit:</span>
                             <span className="text-cyan-300 font-semibold">{room.score_limit}</span>
                           </div>
@@ -646,9 +646,9 @@ export function LobbyPage() {
                           size="sm"
                           onClick={() => handleJoinRoomById(room.id)}
                           disabled={!isJoinable || isFinished}
-                          className="flex-shrink-0 min-w-[100px]"
+                          className="flex-shrink-0 min-w-[60px] sm:min-w-[100px] text-xs sm:text-sm px-2 sm:px-3"
                         >
-                          {isFinished ? 'Finished' : isJoinable ? 'Join' : 'Playing'}
+                          {isFinished ? 'End' : isJoinable ? 'Join' : 'Play'}
                         </Button>
                       </div>
                     )
