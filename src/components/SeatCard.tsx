@@ -13,7 +13,68 @@ interface SeatCardProps {
   isEliminated: boolean
   isYou: boolean
   compact?: boolean
+  turnTimeRemaining?: number | null // milliseconds remaining
+  turnTotalTime?: number // total turn time in milliseconds (default 30000)
 }
+
+// Circular progress component for turn timer
+const CircularProgress = memo(function CircularProgress({
+  progress,
+  size,
+  strokeWidth,
+  compact,
+}: {
+  progress: number // 0 to 1
+  size: number
+  strokeWidth: number
+  compact: boolean
+}) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const offset = circumference - progress * circumference
+
+  // Color based on time remaining
+  const getColor = () => {
+    if (progress <= 0.17) return '#ef4444' // red - less than ~5s
+    if (progress <= 0.33) return '#eab308' // yellow - less than ~10s
+    return '#00f6ff' // cyan
+  }
+
+  return (
+    <svg
+      className="absolute inset-0 -rotate-90"
+      width={size}
+      height={size}
+      style={{ transform: 'rotate(-90deg)' }}
+    >
+      {/* Background circle */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="rgba(0, 246, 255, 0.2)"
+        strokeWidth={strokeWidth}
+      />
+      {/* Progress circle */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke={getColor()}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        style={{
+          transition: 'stroke-dashoffset 0.5s ease-out, stroke 0.3s ease',
+          filter: `drop-shadow(0 0 ${compact ? '3px' : '6px'} ${getColor()})`,
+        }}
+      />
+    </svg>
+  )
+})
 
 export const SeatCard = memo(function SeatCard({
   playerId,
@@ -26,6 +87,8 @@ export const SeatCard = memo(function SeatCard({
   isEliminated,
   isYou,
   compact = false,
+  turnTimeRemaining = null,
+  turnTotalTime = 30000,
 }: SeatCardProps) {
   const shortId = playerId.length > 8 ? playerId.substring(0, 8) + '...' : playerId
   const displayName = playerName || shortId
@@ -45,51 +108,66 @@ export const SeatCard = memo(function SeatCard({
         isYou && !isCurrentTurn && 'border-lime-400/40'
       )}
     >
-      {/* Holographic avatar frame */}
+      {/* Holographic avatar frame with circular timer */}
       <div className={cn('relative', compact ? 'mb-1' : 'mb-3')}>
-        <div className={cn(
-          'mx-auto rounded-full border-2 flex items-center justify-center overflow-hidden',
-          'glass-lg',
-          compact ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-16 h-16',
-          isCurrentTurn
-            ? 'border-cyan-400 shadow-glow-cyan'
-            : isYou
-            ? 'border-lime-400/60 shadow-neon-lime'
-            : 'border-cyan-500/40',
-          isEliminated && 'border-pink-500/50'
-        )}>
-          {playerAvatar ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={playerAvatar}
-              alt={displayName}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback to initials if image fails to load
-                const target = e.target as HTMLImageElement
-                target.style.display = 'none'
-                const parent = target.parentElement
-                if (parent) {
-                  parent.innerHTML = `<div class="w-full h-full flex items-center justify-center ${isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400'} ${isEliminated ? 'text-pink-400' : ''} text-2xl font-bold font-heading">${initial}</div>`
-                }
-              }}
+        {/* Timer ring container - slightly larger than avatar */}
+        <div
+          className="relative mx-auto flex items-center justify-center"
+          style={{
+            width: compact ? 40 : 72,
+            height: compact ? 40 : 72,
+          }}
+        >
+          {/* Circular timer progress */}
+          {isCurrentTurn && turnTimeRemaining !== null && turnTimeRemaining > 0 && (
+            <CircularProgress
+              progress={turnTimeRemaining / turnTotalTime}
+              size={compact ? 40 : 72}
+              strokeWidth={compact ? 3 : 4}
+              compact={compact}
             />
-          ) : (
-            /* Avatar placeholder - first letter of display name */
-            <div className={cn(
-              'font-bold font-heading',
-              compact ? 'text-sm sm:text-base' : 'text-2xl',
-              isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400',
-              isEliminated && 'text-pink-400'
-            )}>
-              {initial}
-            </div>
           )}
-          
-          {/* Pulsing ring for current turn */}
-          {isCurrentTurn && (
-            <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-75" />
-          )}
+
+          {/* Avatar container */}
+          <div className={cn(
+            'absolute rounded-full border-2 flex items-center justify-center overflow-hidden',
+            'glass-lg',
+            compact ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-16 h-16',
+            isCurrentTurn
+              ? 'border-cyan-400/50'
+              : isYou
+              ? 'border-lime-400/60 shadow-neon-lime'
+              : 'border-cyan-500/40',
+            isEliminated && 'border-pink-500/50'
+          )}>
+            {playerAvatar ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={playerAvatar}
+                alt={displayName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to initials if image fails to load
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const parent = target.parentElement
+                  if (parent) {
+                    parent.innerHTML = `<div class="w-full h-full flex items-center justify-center ${isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400'} ${isEliminated ? 'text-pink-400' : ''} text-2xl font-bold font-heading">${initial}</div>`
+                  }
+                }}
+              />
+            ) : (
+              /* Avatar placeholder - first letter of display name */
+              <div className={cn(
+                'font-bold font-heading',
+                compact ? 'text-sm sm:text-base' : 'text-2xl',
+                isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400',
+                isEliminated && 'text-pink-400'
+              )}>
+                {initial}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

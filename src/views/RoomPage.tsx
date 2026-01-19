@@ -1932,34 +1932,8 @@ export function RoomPage() {
                   lastPlay={lastPlay}
                   playerNames={playerNameMap}
                   playerAvatars={playerAvatarMap}
+                  turnTimeRemaining={turnTimeRemaining}
                 />
-
-                {/* Turn Timer Display */}
-                {turnTimeRemaining !== null && currentTurnPlayerId && (
-                  <div className={cn(
-                    'flex items-center justify-center gap-2 sm:gap-3 py-2 px-3 sm:px-4 rounded-lg mb-2',
-                    isMyTurn
-                      ? 'bg-cyan-500/20 border border-cyan-400/50'
-                      : 'bg-purple-500/20 border border-purple-400/30'
-                  )}>
-                    <div className={cn(
-                      'text-xs sm:text-sm font-heading font-bold',
-                      isMyTurn ? 'text-cyan-300 text-glow-cyan' : 'text-purple-300'
-                    )}>
-                      {isMyTurn ? 'YOUR TURN' : `${getPlayerDisplayName(currentTurnPlayerId)}'s turn`}
-                    </div>
-                    <div className={cn(
-                      'flex items-center gap-1 px-2 py-0.5 rounded font-mono text-sm sm:text-base font-bold',
-                      turnTimeRemaining <= 5000
-                        ? 'bg-red-500/30 text-red-400 animate-pulse'
-                        : turnTimeRemaining <= 10000
-                        ? 'bg-yellow-500/30 text-yellow-400'
-                        : 'bg-cyan-500/30 text-cyan-300'
-                    )}>
-                      <span>{Math.ceil(turnTimeRemaining / 1000)}s</span>
-                    </div>
-                  </div>
-                )}
 
                 {/* Your Hand and Controls (directly below table) */}
                 <UICard>

@@ -16,6 +16,7 @@ interface TableViewProps {
   lastPlay: {playerId: string, cards: Card[], kind?: string, fiveKind?: string} | null
   playerNames?: Record<string, string>
   playerAvatars?: Record<string, string | null>
+  turnTimeRemaining?: number | null
 }
 
 // Hook to get responsive table dimensions
@@ -77,6 +78,7 @@ export const TableView = memo(function TableView({
   lastPlay,
   playerNames,
   playerAvatars,
+  turnTimeRemaining,
 }: TableViewProps) {
   const { containerSize, tableSize, radius, isMobile, cardSize } = useResponsiveTable()
 
@@ -203,6 +205,8 @@ export const TableView = memo(function TableView({
                 isEliminated={eliminated.includes(playerId)}
                 isYou={playerId === currentUserId}
                 compact={isMobile}
+                turnTimeRemaining={playerId === currentTurnPlayerId ? turnTimeRemaining : null}
+                turnTotalTime={30000}
               />
             </div>
           )
