@@ -88,6 +88,7 @@ export function RoomPage() {
   const [scoreLimitInput, setScoreLimitInput] = useState<number>(60)
   const [totalScores, setTotalScores] = useState<Record<string, number>>({})
   const [eliminated, setEliminated] = useState<string[]>([])
+  const [disconnectedPlayerIds, setDisconnectedPlayerIds] = useState<string[]>([])
 
   // Turn timer state
   const [turnTimeRemaining, setTurnTimeRemaining] = useState<number | null>(null)
@@ -386,6 +387,41 @@ export function RoomPage() {
             }
             if (typeof message.scoreLimit === 'number') {
               setScoreLimit(message.scoreLimit)
+              setScoreLimitInput(message.scoreLimit)
+            }
+            // Handle disconnectedPlayerIds if provided
+            if (message.disconnectedPlayerIds && Array.isArray(message.disconnectedPlayerIds)) {
+              setDisconnectedPlayerIds(message.disconnectedPlayerIds)
+            } else {
+              setDisconnectedPlayerIds([])
+            }
+            // Handle turnTimeRemaining for turn timer display (on reconnect)
+            if (typeof message.turnTimeRemaining === 'number' && message.turnTimeRemaining > 0) {
+              setTurnTimeRemaining(message.turnTimeRemaining)
+              // Clear existing timer
+              if (turnTimerRef.current) {
+                clearInterval(turnTimerRef.current)
+              }
+              // Start local countdown - update every 100ms for smooth animation
+              turnTimerRef.current = setInterval(() => {
+                setTurnTimeRemaining(prev => {
+                  if (prev === null || prev <= 100) {
+                    if (turnTimerRef.current) {
+                      clearInterval(turnTimerRef.current)
+                      turnTimerRef.current = null
+                    }
+                    return null
+                  }
+                  return prev - 100
+                })
+              }, 100)
+            } else {
+              // Clear timer if not provided
+              setTurnTimeRemaining(null)
+              if (turnTimerRef.current) {
+                clearInterval(turnTimerRef.current)
+                turnTimerRef.current = null
+              }
             }
           } else if (message.type === 'ROOM_STATE') {
             log('[WS] Received ROOM_STATE')
@@ -613,6 +649,12 @@ export function RoomPage() {
             if (message.eliminated && Array.isArray(message.eliminated)) {
               setEliminated(message.eliminated)
             }
+            // Handle disconnectedPlayerIds if provided
+            if (message.disconnectedPlayerIds && Array.isArray(message.disconnectedPlayerIds)) {
+              setDisconnectedPlayerIds(message.disconnectedPlayerIds)
+            } else {
+              setDisconnectedPlayerIds([])
+            }
           } else if (message.type === 'ACTION_ERROR') {
             const errorMsg = typeof message.error === 'string' 
               ? message.error 
@@ -701,6 +743,26 @@ export function RoomPage() {
             if (message.playerId && typeof message.playerId === 'string') {
               // Show toast notification - ROOM_STATE will update the player list
               toast.info(`New player joined!`)
+            }
+          } else if (message.type === 'PLAYER_DISCONNECTED') {
+            log('[WS] Received PLAYER_DISCONNECTED')
+            if (message.playerId && typeof message.playerId === 'string') {
+              const disconnectedId = message.playerId
+              // Add to disconnected list
+              setDisconnectedPlayerIds(prev =>
+                prev.includes(disconnectedId) ? prev : [...prev, disconnectedId]
+              )
+              // Show toast notification
+              toast.warning(`${getPlayerDisplayName(disconnectedId)} disconnected - waiting for reconnect...`)
+            }
+          } else if (message.type === 'PLAYER_RECONNECTED') {
+            log('[WS] Received PLAYER_RECONNECTED')
+            if (message.playerId && typeof message.playerId === 'string') {
+              const reconnectedId = message.playerId
+              // Remove from disconnected list
+              setDisconnectedPlayerIds(prev => prev.filter(id => id !== reconnectedId))
+              // Show toast notification
+              toast.success(`${getPlayerDisplayName(reconnectedId)} reconnected!`)
             }
           } else if (message.type === 'WS_ERROR' || message.type === 'PARSE_ERROR') {
             const errorMsg = typeof message.error === 'string' 
@@ -1928,6 +1990,7 @@ export function RoomPage() {
                   scoreLimit={scoreLimit}
                   currentTurnPlayerId={currentTurnPlayerId}
                   eliminated={eliminated}
+                  disconnectedPlayerIds={disconnectedPlayerIds}
                   currentUserId={currentUserId}
                   lastPlay={lastPlay}
                   playerNames={playerNameMap}

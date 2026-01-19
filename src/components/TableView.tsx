@@ -12,6 +12,7 @@ interface TableViewProps {
   scoreLimit: number
   currentTurnPlayerId: string | null
   eliminated: string[]
+  disconnectedPlayerIds?: string[]
   currentUserId: string | null
   lastPlay: {playerId: string, cards: Card[], kind?: string, fiveKind?: string} | null
   playerNames?: Record<string, string>
@@ -74,6 +75,7 @@ export const TableView = memo(function TableView({
   scoreLimit,
   currentTurnPlayerId,
   eliminated,
+  disconnectedPlayerIds = [],
   currentUserId,
   lastPlay,
   playerNames,
@@ -203,6 +205,7 @@ export const TableView = memo(function TableView({
                 scoreLimit={scoreLimit}
                 isCurrentTurn={playerId === currentTurnPlayerId}
                 isEliminated={eliminated.includes(playerId)}
+                isDisconnected={disconnectedPlayerIds.includes(playerId)}
                 isYou={playerId === currentUserId}
                 compact={isMobile}
                 turnTimeRemaining={playerId === currentTurnPlayerId ? turnTimeRemaining : null}

@@ -11,6 +11,7 @@ interface SeatCardProps {
   scoreLimit: number
   isCurrentTurn: boolean
   isEliminated: boolean
+  isDisconnected?: boolean
   isYou: boolean
   compact?: boolean
   turnTimeRemaining?: number | null // milliseconds remaining
@@ -92,6 +93,7 @@ export const SeatCard = memo(function SeatCard({
   scoreLimit,
   isCurrentTurn,
   isEliminated,
+  isDisconnected = false,
   isYou,
   compact = false,
   turnTimeRemaining = null,
@@ -112,7 +114,8 @@ export const SeatCard = memo(function SeatCard({
           ? 'border-transparent'
           : 'border-cyan-500/30',
         isEliminated && 'opacity-50 border-pink-500/50 bg-pink-900/20',
-        isYou && !isCurrentTurn && 'border-lime-400/40'
+        isYou && !isCurrentTurn && 'border-lime-400/40',
+        isDisconnected && 'grayscale opacity-60 border-gray-500/50'
       )}
     >
       {/* Holographic avatar frame with KKPoker-style timer */}
@@ -255,6 +258,18 @@ export const SeatCard = memo(function SeatCard({
           )}
         >
           {compact ? 'X' : 'ELIM'}
+        </Badge>
+      )}
+      {isDisconnected && !isEliminated && (
+        <Badge
+          variant="default"
+          size="sm"
+          className={cn(
+            'absolute shadow-lg border-gray-400 bg-gray-900/70 text-gray-300 font-heading animate-pulse',
+            compact ? '-bottom-1 left-1/2 -translate-x-1/2 text-[7px] px-1 py-0' : '-bottom-2 left-1/2 -translate-x-1/2 text-xs'
+          )}
+        >
+          {compact ? '...' : 'OFFLINE'}
         </Badge>
       )}
     </div>
