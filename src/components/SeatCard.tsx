@@ -17,21 +17,28 @@ interface SeatCardProps {
   turnTotalTime?: number // total turn time in milliseconds (default 30000)
 }
 
-// Circular progress component for turn timer
-const CircularProgress = memo(function CircularProgress({
+// Rounded rectangle progress component for turn timer around the card
+const CardTimerProgress = memo(function CardTimerProgress({
   progress,
-  size,
+  width,
+  height,
   strokeWidth,
+  borderRadius,
   compact,
 }: {
   progress: number // 0 to 1
-  size: number
+  width: number
+  height: number
   strokeWidth: number
+  borderRadius: number
   compact: boolean
 }) {
-  const radius = (size - strokeWidth) / 2
-  const circumference = radius * 2 * Math.PI
-  const offset = circumference - progress * circumference
+  // Calculate the perimeter of a rounded rectangle
+  const straightWidth = width - 2 * borderRadius
+  const straightHeight = height - 2 * borderRadius
+  const cornerLength = (Math.PI * borderRadius) / 2
+  const perimeter = 2 * straightWidth + 2 * straightHeight + 4 * cornerLength
+  const offset = perimeter - progress * perimeter
 
   // Color based on time remaining
   const getColor = () => {
@@ -40,36 +47,49 @@ const CircularProgress = memo(function CircularProgress({
     return '#00f6ff' // cyan
   }
 
+  const color = getColor()
+
+  // Create rounded rectangle path starting from top center
+  const halfWidth = width / 2
+  const path = `
+    M ${halfWidth} ${strokeWidth / 2}
+    L ${width - borderRadius} ${strokeWidth / 2}
+    Q ${width - strokeWidth / 2} ${strokeWidth / 2} ${width - strokeWidth / 2} ${borderRadius}
+    L ${width - strokeWidth / 2} ${height - borderRadius}
+    Q ${width - strokeWidth / 2} ${height - strokeWidth / 2} ${width - borderRadius} ${height - strokeWidth / 2}
+    L ${borderRadius} ${height - strokeWidth / 2}
+    Q ${strokeWidth / 2} ${height - strokeWidth / 2} ${strokeWidth / 2} ${height - borderRadius}
+    L ${strokeWidth / 2} ${borderRadius}
+    Q ${strokeWidth / 2} ${strokeWidth / 2} ${borderRadius} ${strokeWidth / 2}
+    L ${halfWidth} ${strokeWidth / 2}
+  `
+
   return (
     <svg
-      className="absolute inset-0 -rotate-90"
-      width={size}
-      height={size}
-      style={{ transform: 'rotate(-90deg)' }}
+      className="absolute inset-0 pointer-events-none"
+      width={width}
+      height={height}
+      style={{ zIndex: 50 }}
     >
-      {/* Background circle */}
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
+      {/* Background path */}
+      <path
+        d={path}
         fill="none"
-        stroke="rgba(0, 246, 255, 0.2)"
+        stroke="rgba(0, 246, 255, 0.15)"
         strokeWidth={strokeWidth}
       />
-      {/* Progress circle */}
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
+      {/* Progress path */}
+      <path
+        d={path}
         fill="none"
-        stroke={getColor()}
+        stroke={color}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
-        strokeDasharray={circumference}
+        strokeDasharray={perimeter}
         strokeDashoffset={offset}
         style={{
           transition: 'stroke-dashoffset 0.5s ease-out, stroke 0.3s ease',
-          filter: `drop-shadow(0 0 ${compact ? '3px' : '6px'} ${getColor()})`,
+          filter: `drop-shadow(0 0 ${compact ? '4px' : '8px'} ${color})`,
         }}
       />
     </svg>
@@ -95,6 +115,11 @@ export const SeatCard = memo(function SeatCard({
   const initial = displayName.trim().charAt(0).toUpperCase() || '?'
   const scorePercentage = (totalScore / scoreLimit) * 100
 
+  // Card dimensions for timer progress
+  const cardWidth = compact ? 80 : 144 // w-20 = 80px, w-36 = 144px
+  const cardHeight = compact ? 72 : 160 // approximate heights
+  const borderRadius = 12 // rounded-xl ≈ 12px
+
   return (
     <div
       className={cn(
@@ -102,72 +127,69 @@ export const SeatCard = memo(function SeatCard({
         'hover:scale-105 hover:shadow-glow-cyan',
         compact ? 'w-20 sm:w-24 p-1.5 sm:p-2' : 'w-36 p-4',
         isCurrentTurn
-          ? 'border-cyan-400 shadow-glow-cyan ring-2 ring-cyan-400/50 animate-pulse-glow'
+          ? 'border-transparent'
           : 'border-cyan-500/30',
         isEliminated && 'opacity-50 border-pink-500/50 bg-pink-900/20',
         isYou && !isCurrentTurn && 'border-lime-400/40'
       )}
     >
-      {/* Holographic avatar frame with circular timer */}
+      {/* Card timer progress - wraps around the entire card */}
+      {isCurrentTurn && turnTimeRemaining !== null && turnTimeRemaining > 0 && (
+        <CardTimerProgress
+          progress={turnTimeRemaining / turnTotalTime}
+          width={cardWidth}
+          height={cardHeight}
+          strokeWidth={compact ? 3 : 4}
+          borderRadius={borderRadius}
+          compact={compact}
+        />
+      )}
+
+      {/* Holographic avatar frame */}
       <div className={cn('relative', compact ? 'mb-1' : 'mb-3')}>
-        {/* Timer ring container - slightly larger than avatar */}
-        <div
-          className="relative mx-auto flex items-center justify-center"
-          style={{
-            width: compact ? 40 : 72,
-            height: compact ? 40 : 72,
-          }}
-        >
-          {/* Circular timer progress */}
-          {isCurrentTurn && turnTimeRemaining !== null && turnTimeRemaining > 0 && (
-            <CircularProgress
-              progress={turnTimeRemaining / turnTotalTime}
-              size={compact ? 40 : 72}
-              strokeWidth={compact ? 3 : 4}
-              compact={compact}
+        <div className={cn(
+          'mx-auto rounded-full border-2 flex items-center justify-center overflow-hidden',
+          'glass-lg',
+          compact ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-16 h-16',
+          isCurrentTurn
+            ? 'border-cyan-400 shadow-glow-cyan'
+            : isYou
+            ? 'border-lime-400/60 shadow-neon-lime'
+            : 'border-cyan-500/40',
+          isEliminated && 'border-pink-500/50'
+        )}>
+          {playerAvatar ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={playerAvatar}
+              alt={displayName}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to initials if image fails to load
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  parent.innerHTML = `<div class="w-full h-full flex items-center justify-center ${isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400'} ${isEliminated ? 'text-pink-400' : ''} text-2xl font-bold font-heading">${initial}</div>`
+                }
+              }}
             />
+          ) : (
+            /* Avatar placeholder - first letter of display name */
+            <div className={cn(
+              'font-bold font-heading',
+              compact ? 'text-sm sm:text-base' : 'text-2xl',
+              isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400',
+              isEliminated && 'text-pink-400'
+            )}>
+              {initial}
+            </div>
           )}
 
-          {/* Avatar container */}
-          <div className={cn(
-            'absolute rounded-full border-2 flex items-center justify-center overflow-hidden',
-            'glass-lg',
-            compact ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-16 h-16',
-            isCurrentTurn
-              ? 'border-cyan-400/50'
-              : isYou
-              ? 'border-lime-400/60 shadow-neon-lime'
-              : 'border-cyan-500/40',
-            isEliminated && 'border-pink-500/50'
-          )}>
-            {playerAvatar ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={playerAvatar}
-                alt={displayName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to initials if image fails to load
-                  const target = e.target as HTMLImageElement
-                  target.style.display = 'none'
-                  const parent = target.parentElement
-                  if (parent) {
-                    parent.innerHTML = `<div class="w-full h-full flex items-center justify-center ${isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400'} ${isEliminated ? 'text-pink-400' : ''} text-2xl font-bold font-heading">${initial}</div>`
-                  }
-                }}
-              />
-            ) : (
-              /* Avatar placeholder - first letter of display name */
-              <div className={cn(
-                'font-bold font-heading',
-                compact ? 'text-sm sm:text-base' : 'text-2xl',
-                isCurrentTurn ? 'text-cyan-300 text-glow-cyan' : 'text-cyan-400',
-                isEliminated && 'text-pink-400'
-              )}>
-                {initial}
-              </div>
-            )}
-          </div>
+          {/* Pulsing ring for current turn */}
+          {isCurrentTurn && (
+            <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-75" />
+          )}
         </div>
       </div>
 
