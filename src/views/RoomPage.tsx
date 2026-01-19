@@ -89,6 +89,10 @@ export function RoomPage() {
   const [totalScores, setTotalScores] = useState<Record<string, number>>({})
   const [eliminated, setEliminated] = useState<string[]>([])
 
+  // Turn timer state
+  const [turnTimeRemaining, setTurnTimeRemaining] = useState<number | null>(null)
+  const turnTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   // Responsive state for mobile detection
   const [isMobile, setIsMobile] = useState(false)
 
@@ -566,6 +570,34 @@ export function RoomPage() {
               // Reset if not provided (server may omit it when no one has passed)
               setPassedPlayerIds([])
             }
+            // Handle turnTimeRemaining for turn timer display
+            if (typeof message.turnTimeRemaining === 'number' && message.turnTimeRemaining > 0) {
+              setTurnTimeRemaining(message.turnTimeRemaining)
+              // Clear existing timer
+              if (turnTimerRef.current) {
+                clearInterval(turnTimerRef.current)
+              }
+              // Start local countdown
+              turnTimerRef.current = setInterval(() => {
+                setTurnTimeRemaining(prev => {
+                  if (prev === null || prev <= 1000) {
+                    if (turnTimerRef.current) {
+                      clearInterval(turnTimerRef.current)
+                      turnTimerRef.current = null
+                    }
+                    return null
+                  }
+                  return prev - 1000
+                })
+              }, 1000)
+            } else {
+              // Clear timer if not provided
+              setTurnTimeRemaining(null)
+              if (turnTimerRef.current) {
+                clearInterval(turnTimerRef.current)
+                turnTimerRef.current = null
+              }
+            }
             // Handle queuePlayerIds if provided
             if (message.queuePlayerIds && Array.isArray(message.queuePlayerIds)) {
               setQueuePlayerIds(message.queuePlayerIds)
@@ -969,6 +1001,11 @@ export function RoomPage() {
           if (roomChannelRef.current) {
             supabase.removeChannel(roomChannelRef.current)
             roomChannelRef.current = null
+          }
+          // Clear turn timer on unmount
+          if (turnTimerRef.current) {
+            clearInterval(turnTimerRef.current)
+            turnTimerRef.current = null
           }
           // Close WebSocket on unmount
           if (wsRef.current) {
@@ -1896,6 +1933,33 @@ export function RoomPage() {
                   playerNames={playerNameMap}
                   playerAvatars={playerAvatarMap}
                 />
+
+                {/* Turn Timer Display */}
+                {turnTimeRemaining !== null && currentTurnPlayerId && (
+                  <div className={cn(
+                    'flex items-center justify-center gap-2 sm:gap-3 py-2 px-3 sm:px-4 rounded-lg mb-2',
+                    isMyTurn
+                      ? 'bg-cyan-500/20 border border-cyan-400/50'
+                      : 'bg-purple-500/20 border border-purple-400/30'
+                  )}>
+                    <div className={cn(
+                      'text-xs sm:text-sm font-heading font-bold',
+                      isMyTurn ? 'text-cyan-300 text-glow-cyan' : 'text-purple-300'
+                    )}>
+                      {isMyTurn ? 'YOUR TURN' : `${getPlayerDisplayName(currentTurnPlayerId)}'s turn`}
+                    </div>
+                    <div className={cn(
+                      'flex items-center gap-1 px-2 py-0.5 rounded font-mono text-sm sm:text-base font-bold',
+                      turnTimeRemaining <= 5000
+                        ? 'bg-red-500/30 text-red-400 animate-pulse'
+                        : turnTimeRemaining <= 10000
+                        ? 'bg-yellow-500/30 text-yellow-400'
+                        : 'bg-cyan-500/30 text-cyan-300'
+                    )}>
+                      <span>{Math.ceil(turnTimeRemaining / 1000)}s</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Your Hand and Controls (directly below table) */}
                 <UICard>
