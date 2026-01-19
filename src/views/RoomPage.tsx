@@ -486,9 +486,14 @@ export function RoomPage() {
           } else if (message.type === 'ROOM_STATE') {
             log('[WS] Received ROOM_STATE')
             if (message.players && Array.isArray(message.players)) {
-              const playersArray = message.players as Array<{ playerId: string; isReady?: boolean }>
+              const playersArray = message.players as Array<{ playerId: string; isReady?: boolean; status?: string; offlineSince?: number | null }>
               // Map to ensure isReady is always boolean
               setRoomStatePlayers(playersArray.map(p => ({ playerId: p.playerId, isReady: p.isReady ?? false })))
+              // Extract disconnected player IDs from status
+              const disconnectedIds = playersArray
+                .filter(p => p.status === 'OFFLINE')
+                .map(p => p.playerId)
+              setDisconnectedPlayerIds(disconnectedIds)
               // Fetch profiles for any new players that don't have profiles yet
               // Use functional update to access current players state
               setPlayers(currentPlayers => {
