@@ -857,6 +857,24 @@ export function RoomPage() {
               // Show toast notification
               toast.info(`${getPlayerDisplayName(leftPlayerId)} left the room`)
             }
+          } else if (message.type === 'ROOM_OVERVIEW') {
+            log('[WS] Received ROOM_OVERVIEW')
+            // Handle seats array - extract seatedPlayerIds and disconnectedPlayerIds
+            if (message.seats && Array.isArray(message.seats)) {
+              type SeatInfo = { seatIndex: number; playerId: string | null; status: string; offlineSince: number | null }
+              const seats = message.seats as SeatInfo[]
+              // Extract seated player IDs (non-empty seats)
+              const seatedIds = seats
+                .filter(s => s.playerId && s.status !== 'REMOVED')
+                .sort((a, b) => a.seatIndex - b.seatIndex)
+                .map(s => s.playerId!)
+              setSeatedPlayerIds(seatedIds)
+              // Extract disconnected player IDs (OFFLINE status)
+              const disconnectedIds = seats
+                .filter(s => s.playerId && s.status === 'OFFLINE')
+                .map(s => s.playerId!)
+              setDisconnectedPlayerIds(disconnectedIds)
+            }
           } else if (message.type === 'PLAYER_JOINED') {
             log('[WS] Received PLAYER_JOINED')
             if (message.playerId && typeof message.playerId === 'string') {
