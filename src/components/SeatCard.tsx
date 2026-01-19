@@ -17,79 +17,66 @@ interface SeatCardProps {
   turnTotalTime?: number // total turn time in milliseconds (default 30000)
 }
 
-// Rounded rectangle progress component for turn timer around the card
-const CardTimerProgress = memo(function CardTimerProgress({
+// KKPoker-style circular timer around avatar
+const AvatarTimer = memo(function AvatarTimer({
   progress,
-  compact,
+  size,
 }: {
   progress: number // 0 to 1
-  compact: boolean
+  size: number // avatar size in pixels
 }) {
-  const strokeWidth = compact ? 3 : 4
-  const borderRadius = 12
-  // Use viewBox coordinates - actual size will be 100% of parent
-  const width = 100
-  const height = 100
+  const strokeWidth = 4
+  const padding = 4 // gap between avatar and timer ring
+  const radius = (size / 2) + padding + (strokeWidth / 2)
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - progress * circumference
+  const svgSize = radius * 2 + strokeWidth
 
-  // Calculate the perimeter of a rounded rectangle
-  const straightWidth = width - 2 * borderRadius
-  const straightHeight = height - 2 * borderRadius
-  const cornerLength = (Math.PI * borderRadius) / 2
-  const perimeter = 2 * straightWidth + 2 * straightHeight + 4 * cornerLength
-  const offset = perimeter - progress * perimeter
-
-  // Color based on time remaining
+  // Color based on time remaining - KKPoker style (green -> yellow -> red)
   const getColor = () => {
     if (progress <= 0.17) return '#ef4444' // red - less than ~5s
-    if (progress <= 0.33) return '#eab308' // yellow - less than ~10s
-    return '#00f6ff' // cyan
+    if (progress <= 0.33) return '#f59e0b' // orange/yellow - less than ~10s
+    return '#22c55e' // green
   }
 
   const color = getColor()
 
-  // Create rounded rectangle path starting from top center, going clockwise
-  const halfWidth = width / 2
-  const inset = strokeWidth / 2
-  const path = `
-    M ${halfWidth} ${inset}
-    L ${width - borderRadius} ${inset}
-    A ${borderRadius - inset} ${borderRadius - inset} 0 0 1 ${width - inset} ${borderRadius}
-    L ${width - inset} ${height - borderRadius}
-    A ${borderRadius - inset} ${borderRadius - inset} 0 0 1 ${width - borderRadius} ${height - inset}
-    L ${borderRadius} ${height - inset}
-    A ${borderRadius - inset} ${borderRadius - inset} 0 0 1 ${inset} ${height - borderRadius}
-    L ${inset} ${borderRadius}
-    A ${borderRadius - inset} ${borderRadius - inset} 0 0 1 ${borderRadius} ${inset}
-    Z
-  `
-
   return (
     <svg
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      style={{ zIndex: 50 }}
+      className="absolute pointer-events-none"
+      width={svgSize}
+      height={svgSize}
+      style={{
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 10,
+      }}
     >
-      {/* Background path */}
-      <path
-        d={path}
+      {/* Background circle */}
+      <circle
+        cx={svgSize / 2}
+        cy={svgSize / 2}
+        r={radius}
         fill="none"
-        stroke="rgba(0, 246, 255, 0.15)"
+        stroke="rgba(255, 255, 255, 0.1)"
         strokeWidth={strokeWidth}
-        vectorEffect="non-scaling-stroke"
       />
-      {/* Progress path */}
-      <path
-        d={path}
+      {/* Progress circle - starts from top, goes clockwise */}
+      <circle
+        cx={svgSize / 2}
+        cy={svgSize / 2}
+        r={radius}
         fill="none"
         stroke={color}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
-        strokeDasharray={perimeter}
+        strokeDasharray={circumference}
         strokeDashoffset={offset}
-        vectorEffect="non-scaling-stroke"
         style={{
-          filter: `drop-shadow(0 0 ${compact ? '4px' : '8px'} ${color})`,
+          transform: 'rotate(-90deg)',
+          transformOrigin: '50% 50%',
+          filter: `drop-shadow(0 0 6px ${color})`,
         }}
       />
     </svg>
@@ -128,16 +115,15 @@ export const SeatCard = memo(function SeatCard({
         isYou && !isCurrentTurn && 'border-lime-400/40'
       )}
     >
-      {/* Card timer progress - wraps around the entire card */}
-      {isCurrentTurn && turnTimeRemaining !== null && turnTimeRemaining > 0 && (
-        <CardTimerProgress
-          progress={turnTimeRemaining / turnTotalTime}
-          compact={compact}
-        />
-      )}
-
-      {/* Holographic avatar frame */}
+      {/* Holographic avatar frame with KKPoker-style timer */}
       <div className={cn('relative', compact ? 'mb-1' : 'mb-3')}>
+        {/* KKPoker-style circular timer around avatar */}
+        {isCurrentTurn && turnTimeRemaining !== null && turnTimeRemaining > 0 && (
+          <AvatarTimer
+            progress={turnTimeRemaining / turnTotalTime}
+            size={compact ? 32 : 64}
+          />
+        )}
         <div className={cn(
           'mx-auto rounded-full border-2 flex items-center justify-center overflow-hidden',
           'glass-lg',
