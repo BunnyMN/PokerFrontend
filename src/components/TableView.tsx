@@ -209,7 +209,7 @@ export const TableView = memo(function TableView({
                 isYou={playerId === currentUserId}
                 compact={isMobile}
                 turnTimeRemaining={playerId === currentTurnPlayerId ? turnTimeRemaining : null}
-                turnTotalTime={30000}
+                turnTotalTime={20000}
               />
             </div>
           )

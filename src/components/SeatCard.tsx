@@ -15,7 +15,7 @@ interface SeatCardProps {
   isYou: boolean
   compact?: boolean
   turnTimeRemaining?: number | null // milliseconds remaining
-  turnTotalTime?: number // total turn time in milliseconds (default 30000)
+  turnTotalTime?: number // total turn time in milliseconds (default 20000)
 }
 
 // KKPoker-style circular timer around avatar
@@ -97,7 +97,7 @@ export const SeatCard = memo(function SeatCard({
   isYou,
   compact = false,
   turnTimeRemaining = null,
-  turnTotalTime = 30000,
+  turnTotalTime = 20000,
 }: SeatCardProps) {
   const shortId = playerId.length > 8 ? playerId.substring(0, 8) + '...' : playerId
   const displayName = playerName || shortId

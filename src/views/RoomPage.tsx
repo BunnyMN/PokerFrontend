@@ -764,6 +764,32 @@ export function RoomPage() {
               // Show toast notification
               toast.success(`${getPlayerDisplayName(reconnectedId)} reconnected!`)
             }
+          } else if (message.type === 'PLAYER_STOOD_UP') {
+            log('[WS] Received PLAYER_STOOD_UP')
+            if (message.playerId && typeof message.playerId === 'string') {
+              const stoodUpId = message.playerId
+              // Remove from players list
+              setPlayers(prev => prev.filter(p => p.player_id !== stoodUpId))
+              // Remove from roomStatePlayers
+              setRoomStatePlayers(prev => prev.filter(p => p.playerId !== stoodUpId))
+              // Remove from seatedPlayerIds
+              setSeatedPlayerIds(prev => prev.filter(id => id !== stoodUpId))
+              // Remove from disconnected list
+              setDisconnectedPlayerIds(prev => prev.filter(id => id !== stoodUpId))
+              // Remove from handsCount
+              setHandsCount(prev => {
+                const newHandsCount = { ...prev }
+                delete newHandsCount[stoodUpId]
+                return newHandsCount
+              })
+              // Show toast notification
+              const isYou = stoodUpId === currentUserId
+              if (isYou) {
+                toast.error('You have left the game')
+              } else {
+                toast.info(`${getPlayerDisplayName(stoodUpId)} stood up from the table`)
+              }
+            }
           } else if (message.type === 'WS_ERROR' || message.type === 'PARSE_ERROR') {
             const errorMsg = typeof message.error === 'string' 
               ? message.error 
@@ -1573,6 +1599,18 @@ export function RoomPage() {
     }
   }
 
+  // Stand Up - voluntarily leave game with loss penalty
+  const handleStandUp = () => {
+    if (!roomId || !wsRef.current) return
+
+    const wsWithStandUp = wsRef.current as WebSocket & { sendStandUp?: () => void }
+    if (wsWithStandUp.sendStandUp) {
+      wsWithStandUp.sendStandUp()
+      playButtonClick()
+      toast.warning('You stood up from the table. Your remaining cards count as penalty points.')
+    }
+  }
+
   const handleReconnect = async () => {
     if (!roomId || !currentUserId || !room) return
 
@@ -1627,9 +1665,27 @@ export function RoomPage() {
     >
       <div className="space-y-6">
         {/* Header Actions */}
-        <div className="flex justify-end">
-          <Button variant="danger" onClick={handleLeave} disabled={leaving} isLoading={leaving}>
-            Leave Room
+        <div className="flex justify-end gap-2">
+          {/* During game: Show Stand Up button (leave with penalty) */}
+          {(room.status === 'playing' || yourHand) && seatedPlayerIds.includes(currentUserId || '') && (
+            <Button
+              variant="danger"
+              onClick={handleStandUp}
+              disabled={leaving || wsStatus !== 'connected'}
+              title="Leave game permanently (cards count as penalty)"
+            >
+              Stand Up
+            </Button>
+          )}
+          {/* Leave Room - allows reconnect within 60 seconds */}
+          <Button
+            variant="secondary"
+            onClick={handleLeave}
+            disabled={leaving}
+            isLoading={leaving}
+            title={room.status === 'playing' ? 'Disconnect (can reconnect within 60s)' : 'Leave room'}
+          >
+            {room.status === 'playing' ? 'Disconnect' : 'Leave Room'}
           </Button>
         </div>
 

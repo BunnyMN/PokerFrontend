@@ -110,6 +110,25 @@ export function connectGameSocketDebug(
   // Expose sendSyncRequest via a custom property for RoomPage to call after WELCOME
   ;(ws as WebSocket & { sendSyncRequest?: () => void }).sendSyncRequest = sendSyncRequest
 
+  // Helper to send STAND_UP (voluntary leave with loss)
+  const sendStandUp = () => {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        const standUpMessage = {
+          type: 'STAND_UP',
+          roomId,
+        }
+        ws.send(JSON.stringify(standUpMessage))
+        logEvent('STAND_UP sent')
+      } catch (err) {
+        logError('[WS] Failed to send STAND_UP:', err)
+      }
+    }
+  }
+
+  // Expose sendStandUp via a custom property
+  ;(ws as WebSocket & { sendStandUp?: () => void }).sendStandUp = sendStandUp
+
   ws.onmessage = (event) => {
     logEvent('message received', { dataLength: event.data?.length || 0 })
     
