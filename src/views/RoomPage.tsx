@@ -90,9 +90,13 @@ export function RoomPage() {
   const [eliminated, setEliminated] = useState<string[]>([])
   const [disconnectedPlayerIds, setDisconnectedPlayerIds] = useState<string[]>([])
 
-  // Turn timer state
+  // Turn timer state - now using absolute deadline from server
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_turnDeadlineAt, setTurnDeadlineAt] = useState<number | null>(null)
   const [turnTimeRemaining, setTurnTimeRemaining] = useState<number | null>(null)
   const turnTimerRef = useRef<NodeJS.Timeout | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_turnId, setTurnId] = useState<string | null>(null)
 
   // Responsive state for mobile detection
   const [isMobile, setIsMobile] = useState(false)
@@ -339,8 +343,30 @@ export function RoomPage() {
             setPendingPlayCards(null)
             pendingPlayCardsRef.current = null
             // Apply SYNC_STATE - overwrite all relevant state (do NOT merge)
-            if (message.seatedPlayerIds && Array.isArray(message.seatedPlayerIds)) {
+            // Handle seats array (new protocol) - extract seatedPlayerIds and disconnectedPlayerIds
+            if (message.seats && Array.isArray(message.seats)) {
+              type SeatInfo = { seatIndex: number; playerId: string | null; status: string; offlineSince: number | null }
+              const seats = message.seats as SeatInfo[]
+              // Extract seated player IDs (non-empty seats)
+              const seatedIds = seats
+                .filter(s => s.playerId && s.status !== 'REMOVED')
+                .sort((a, b) => a.seatIndex - b.seatIndex)
+                .map(s => s.playerId!)
+              setSeatedPlayerIds(seatedIds)
+              // Extract disconnected player IDs (OFFLINE status)
+              const disconnectedIds = seats
+                .filter(s => s.playerId && s.status === 'OFFLINE')
+                .map(s => s.playerId!)
+              setDisconnectedPlayerIds(disconnectedIds)
+            } else if (message.seatedPlayerIds && Array.isArray(message.seatedPlayerIds)) {
+              // Fallback to old protocol
               setSeatedPlayerIds(message.seatedPlayerIds)
+              // Handle disconnectedPlayerIds if provided (old protocol)
+              if (message.disconnectedPlayerIds && Array.isArray(message.disconnectedPlayerIds)) {
+                setDisconnectedPlayerIds(message.disconnectedPlayerIds)
+              } else {
+                setDisconnectedPlayerIds([])
+              }
             }
             if (message.queuePlayerIds && Array.isArray(message.queuePlayerIds)) {
               setQueuePlayerIds(message.queuePlayerIds)
@@ -352,7 +378,7 @@ export function RoomPage() {
               const lastPlay = message.lastPlay as { playerId?: unknown; cards?: unknown; kind?: unknown; fiveKind?: unknown }
               const normalizedLastPlay = {
                 playerId: typeof lastPlay.playerId === 'string' ? lastPlay.playerId : '',
-                cards: Array.isArray(lastPlay.cards) 
+                cards: Array.isArray(lastPlay.cards)
                   ? lastPlay.cards.map((card: unknown) => normalizeCard(card))
                   : [],
                 kind: typeof lastPlay.kind === 'string' ? lastPlay.kind : undefined,
@@ -389,14 +415,47 @@ export function RoomPage() {
               setScoreLimit(message.scoreLimit)
               setScoreLimitInput(message.scoreLimit)
             }
-            // Handle disconnectedPlayerIds if provided
-            if (message.disconnectedPlayerIds && Array.isArray(message.disconnectedPlayerIds)) {
-              setDisconnectedPlayerIds(message.disconnectedPlayerIds)
-            } else {
-              setDisconnectedPlayerIds([])
-            }
-            // Handle turnTimeRemaining for turn timer display (on reconnect)
-            if (typeof message.turnTimeRemaining === 'number' && message.turnTimeRemaining > 0) {
+            // Handle turnDeadlineAt (new protocol) or turnTimeRemaining (old protocol)
+            if (typeof message.turnDeadlineAt === 'number' && message.turnDeadlineAt > 0) {
+              setTurnDeadlineAt(message.turnDeadlineAt)
+              if (typeof message.turnId === 'string') {
+                setTurnId(message.turnId)
+              }
+              // Clear existing timer
+              if (turnTimerRef.current) {
+                clearInterval(turnTimerRef.current)
+              }
+              // Calculate initial remaining time
+              const initialRemaining = Math.max(0, message.turnDeadlineAt - Date.now())
+              setTurnTimeRemaining(initialRemaining > 0 ? initialRemaining : null)
+              // Start local countdown from deadline - update every 100ms for smooth animation
+              if (initialRemaining > 0) {
+                turnTimerRef.current = setInterval(() => {
+                  setTurnDeadlineAt(deadline => {
+                    if (deadline === null) {
+                      if (turnTimerRef.current) {
+                        clearInterval(turnTimerRef.current)
+                        turnTimerRef.current = null
+                      }
+                      setTurnTimeRemaining(null)
+                      return null
+                    }
+                    const remaining = deadline - Date.now()
+                    if (remaining <= 0) {
+                      if (turnTimerRef.current) {
+                        clearInterval(turnTimerRef.current)
+                        turnTimerRef.current = null
+                      }
+                      setTurnTimeRemaining(null)
+                      return null
+                    }
+                    setTurnTimeRemaining(remaining)
+                    return deadline
+                  })
+                }, 100)
+              }
+            } else if (typeof message.turnTimeRemaining === 'number' && message.turnTimeRemaining > 0) {
+              // Fallback to old protocol
               setTurnTimeRemaining(message.turnTimeRemaining)
               // Clear existing timer
               if (turnTimerRef.current) {
@@ -418,6 +477,7 @@ export function RoomPage() {
             } else {
               // Clear timer if not provided
               setTurnTimeRemaining(null)
+              setTurnDeadlineAt(null)
               if (turnTimerRef.current) {
                 clearInterval(turnTimerRef.current)
                 turnTimerRef.current = null
@@ -563,6 +623,22 @@ export function RoomPage() {
             }
           } else if (message.type === 'GAME_STATE') {
             log('[WS] Received GAME_STATE')
+            // Handle seats array (new protocol) - extract seatedPlayerIds and disconnectedPlayerIds
+            if (message.seats && Array.isArray(message.seats)) {
+              type SeatInfo = { seatIndex: number; playerId: string | null; status: string; offlineSince: number | null }
+              const seats = message.seats as SeatInfo[]
+              // Extract seated player IDs (non-empty seats)
+              const seatedIds = seats
+                .filter(s => s.playerId && s.status !== 'REMOVED')
+                .sort((a, b) => a.seatIndex - b.seatIndex)
+                .map(s => s.playerId!)
+              setSeatedPlayerIds(seatedIds)
+              // Extract disconnected player IDs (OFFLINE status)
+              const disconnectedIds = seats
+                .filter(s => s.playerId && s.status === 'OFFLINE')
+                .map(s => s.playerId!)
+              setDisconnectedPlayerIds(disconnectedIds)
+            }
             if (message.currentTurnPlayerId && typeof message.currentTurnPlayerId === 'string') {
               setCurrentTurnPlayerId(message.currentTurnPlayerId)
             }
@@ -570,7 +646,7 @@ export function RoomPage() {
               const lastPlay = message.lastPlay as { playerId?: unknown; cards?: unknown; kind?: unknown; fiveKind?: unknown }
               const normalizedLastPlay = {
                 playerId: typeof lastPlay.playerId === 'string' ? lastPlay.playerId : '',
-                cards: Array.isArray(lastPlay.cards) 
+                cards: Array.isArray(lastPlay.cards)
                   ? lastPlay.cards.map((card: unknown) => normalizeCard(card))
                   : [],
                 kind: typeof lastPlay.kind === 'string' ? lastPlay.kind : undefined,
@@ -606,8 +682,47 @@ export function RoomPage() {
               // Reset if not provided (server may omit it when no one has passed)
               setPassedPlayerIds([])
             }
-            // Handle turnTimeRemaining for turn timer display
-            if (typeof message.turnTimeRemaining === 'number' && message.turnTimeRemaining > 0) {
+            // Handle turnDeadlineAt (new protocol) or turnTimeRemaining (old protocol)
+            if (typeof message.turnDeadlineAt === 'number' && message.turnDeadlineAt > 0) {
+              setTurnDeadlineAt(message.turnDeadlineAt)
+              if (typeof message.turnId === 'string') {
+                setTurnId(message.turnId)
+              }
+              // Clear existing timer
+              if (turnTimerRef.current) {
+                clearInterval(turnTimerRef.current)
+              }
+              // Calculate initial remaining time
+              const initialRemaining = Math.max(0, message.turnDeadlineAt - Date.now())
+              setTurnTimeRemaining(initialRemaining > 0 ? initialRemaining : null)
+              // Start local countdown from deadline - update every 100ms for smooth animation
+              if (initialRemaining > 0) {
+                turnTimerRef.current = setInterval(() => {
+                  setTurnDeadlineAt(deadline => {
+                    if (deadline === null) {
+                      if (turnTimerRef.current) {
+                        clearInterval(turnTimerRef.current)
+                        turnTimerRef.current = null
+                      }
+                      setTurnTimeRemaining(null)
+                      return null
+                    }
+                    const remaining = deadline - Date.now()
+                    if (remaining <= 0) {
+                      if (turnTimerRef.current) {
+                        clearInterval(turnTimerRef.current)
+                        turnTimerRef.current = null
+                      }
+                      setTurnTimeRemaining(null)
+                      return null
+                    }
+                    setTurnTimeRemaining(remaining)
+                    return deadline
+                  })
+                }, 100)
+              }
+            } else if (typeof message.turnTimeRemaining === 'number' && message.turnTimeRemaining > 0) {
+              // Fallback to old protocol
               setTurnTimeRemaining(message.turnTimeRemaining)
               // Clear existing timer
               if (turnTimerRef.current) {
@@ -629,6 +744,7 @@ export function RoomPage() {
             } else {
               // Clear timer if not provided
               setTurnTimeRemaining(null)
+              setTurnDeadlineAt(null)
               if (turnTimerRef.current) {
                 clearInterval(turnTimerRef.current)
                 turnTimerRef.current = null
@@ -649,11 +765,9 @@ export function RoomPage() {
             if (message.eliminated && Array.isArray(message.eliminated)) {
               setEliminated(message.eliminated)
             }
-            // Handle disconnectedPlayerIds if provided
-            if (message.disconnectedPlayerIds && Array.isArray(message.disconnectedPlayerIds)) {
+            // Handle disconnectedPlayerIds if provided (old protocol fallback)
+            if (!message.seats && message.disconnectedPlayerIds && Array.isArray(message.disconnectedPlayerIds)) {
               setDisconnectedPlayerIds(message.disconnectedPlayerIds)
-            } else {
-              setDisconnectedPlayerIds([])
             }
           } else if (message.type === 'ACTION_ERROR') {
             const errorMsg = typeof message.error === 'string' 
