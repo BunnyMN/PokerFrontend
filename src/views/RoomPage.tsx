@@ -577,19 +577,19 @@ export function RoomPage() {
               if (turnTimerRef.current) {
                 clearInterval(turnTimerRef.current)
               }
-              // Start local countdown
+              // Start local countdown - update every 100ms for smooth animation
               turnTimerRef.current = setInterval(() => {
                 setTurnTimeRemaining(prev => {
-                  if (prev === null || prev <= 1000) {
+                  if (prev === null || prev <= 100) {
                     if (turnTimerRef.current) {
                       clearInterval(turnTimerRef.current)
                       turnTimerRef.current = null
                     }
                     return null
                   }
-                  return prev - 1000
+                  return prev - 100
                 })
-              }, 1000)
+              }, 100)
             } else {
               // Clear timer if not provided
               setTurnTimeRemaining(null)
