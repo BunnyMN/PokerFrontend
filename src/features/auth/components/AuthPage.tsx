@@ -106,7 +106,7 @@ export function AuthPage() {
           {/* Title & Subtitle */}
           <div className="text-center mb-8">
             <h1 className="text-3xl sm:text-4xl font-heading font-bold text-cyan-300 text-glow-cyan mb-3 tracking-tight">
-              Cyber
+              13
             </h1>
             <p className="text-cyan-400/70 text-sm sm:text-base font-medium">
               Join the ultimate poker experience
